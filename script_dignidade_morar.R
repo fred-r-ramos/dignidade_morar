@@ -1,6 +1,6 @@
 library(tidyverse)
 
-setwd( "C:/Users/fredr/Dropbox/B_PROJETOS_PESQUISA_GV/ZAP_DATA_HABITACAO/dignidade_morar")
+setwd( "G:/Meu Drive/DOCS/Urbana_habitação/Dignidade_Morar/dignidade_morar")
 
 BASE<-read.csv("base_dignidade_v1.csv",header = TRUE, stringsAsFactors = FALSE)
 #names(BASE)
