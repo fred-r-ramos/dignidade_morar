@@ -1,6 +1,10 @@
 library(tidyverse)
 
-setwd( "G:/Meu Drive/DOCS/Urbana_habitação/Dignidade_Morar/dignidade_morar")
+
+#aqui vou deixar as duas linhas digitadas e uma delas comentario para evitar ficar digitando sempre
+
+setwd( "C:/Users/fredr/Dropbox/B_PROJETOS_PESQUISA_GV/ZAP_DATA_HABITACAO/dignidade_morar")
+#setwd( "G:/Meu Drive/DOCS/Urbana_habitação/Dignidade_Morar/DIGNIDADE_V1")
 
 BASE<-read.csv("base_dignidade_v1.csv",header = TRUE, stringsAsFactors = FALSE)
 #names(BASE)
@@ -226,8 +230,11 @@ LOCfinal_valid <- LOCfinal_valid%>% mutate (valorm2 = iptu_m2+preco_m2+condomini
 
 
 #deflacionar valores
+#aqui, se o seu arquivo de excel esta no diretorio de trabalho, nao precisa digitar o caminho todo
+
 library(readxl)
-FipeZap <- read_excel("G:/Meu Drive/DOCS/Urbana_habitação/Dignidade_Morar/FipeZap.xlsx")
+#FipeZap <- read_excel("G:/Meu Drive/DOCS/Urbana_habitação/Dignidade_Morar/FipeZap.xlsx")
+FipeZap <- read_excel("FipeZap.xlsx")
 view(FipeZap)
 
 LOCfinal_valid <- full_join(LOCfinal_valid, FipeZap, by =c("Mes", "Ano"))
@@ -262,17 +269,61 @@ library(leaflet)
 library(sf)
 library(geobr)
 
-muni <- read_municipality(code_muni = 3513801,year=2010,showProgress = FALSE,simplified = FALSE)
+diadema <- read_municipality(code_muni = 3513801,year=2010,showProgress = FALSE,simplified = FALSE)
 
 leaflet() %>% addProviderTiles("CartoDB.Positron") %>%  
-  addPolygons(data=muni , color = "red", weight = 2, smoothFactor = 0.5,
+  addPolygons(data=diadema , color = "red", weight = 2, smoothFactor = 0.5,
               opacity = 1.0, fillOpacity = 0,
               highlightOptions = highlightOptions(color = "white", weight = 2,
                                                   bringToFront = TRUE))
 
 leaflet() %>% addProviderTiles("CartoDB.Positron") %>% 
   addCircleMarkers(data=LOCfinal_valid_sample,lat=LOCfinal_valid_sample$latitude,lng=LOCfinal_valid_sample$longitude,color = "blue", radius = 0.01) %>% 
-  addPolygons(data=muni , color = "red", weight = 2, smoothFactor = 0.5,
+  addPolygons(data=diadema , color = "red", weight = 2, smoothFactor = 0.5,
               opacity = 1.0, fillOpacity = 0,
               highlightOptions = highlightOptions(color = "white", weight = 2,
                                                   bringToFront=TRUE))
+
+
+diadema_buffer <- st_buffer(diadema,2000)
+diadema_buffer <- st_simplify(diadema_buffer,dTolerance = 200)
+
+leaflet() %>% addProviderTiles("CartoDB.Positron") %>%  
+  addPolygons(data=diadema , color = "red", weight = 2, smoothFactor = 0.5,
+              opacity = 1.0, fillOpacity = 0,
+              highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                  bringToFront = TRUE)) %>%  addPolygons(data=diadema_buffer , color = "green", weight = 2, smoothFactor = 0.5,
+                                                                                     opacity = 1.0, fillOpacity = 0,
+                                                                                     highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE)) %>% addCircleMarkers(data=LOCfinal_valid_sample,lat=LOCfinal_valid_sample$latitude,lng=LOCfinal_valid_sample$longitude,color = "blue", radius = 0.01)
+
+#selecionar apenas as amostrar que estao ate 2 km da fronteira de Diadema
+
+LOCfinal_valid_sample_sf <- st_as_sf(LOCfinal_valid_sample, coords = c("longitude", "latitude"))
+
+LOCfinal_valid_sample_sf_inside <- LOCfinal_valid_sample_sf[st_within(LOCfinal_valid_sample_sf, diadema_buffer), ]
+
+st_crs(LOCfinal_valid_sample_sf)
+LOCfinal_valid_sample_sf <- st_set_crs(LOCfinal_valid_sample_sf, 4674)
+st_crs(LOCfinal_valid_sample_sf)
+st_crs(diadema_buffer)
+
+leaflet() %>% addProviderTiles("CartoDB.Positron") %>%  
+  addPolygons(data=diadema , color = "red", weight = 2, smoothFactor = 0.5,
+              opacity = 1.0, fillOpacity = 0,
+              highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                  bringToFront = TRUE)) %>%  addPolygons(data=diadema_buffer , color = "green", weight = 2, smoothFactor = 0.5,
+                                                                                         opacity = 1.0, fillOpacity = 0,
+                                                                                         highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE)) %>% addCircleMarkers(data=LOCfinal_valid_sample_sf,lat=LOCfinal_valid_sample$latitude,lng=LOCfinal_valid_sample$longitude,color = "blue", radius = 0.01)
+
+LOCfinal_valid_sample_sf_inside <- st_intersection(LOCfinal_valid_sample_sf, diadema_buffer)
+
+
+leaflet() %>% addProviderTiles("CartoDB.Positron") %>%  
+  addPolygons(data=diadema , color = "red", weight = 2, smoothFactor = 0.5,
+              opacity = 1.0, fillOpacity = 0,
+              highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                  bringToFront = TRUE)) %>%  addPolygons(data=diadema_buffer , color = "green", weight = 2, smoothFactor = 0.5,
+                                                                                         opacity = 1.0, fillOpacity = 0,
+                                                                                         highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE)) %>%   addCircleMarkers(data = LOCfinal_valid_sample_sf_inside,color = "blue", radius = 0.01)
+                                                                                                                                                                                                      
+                                                                                                                                                                                                       
