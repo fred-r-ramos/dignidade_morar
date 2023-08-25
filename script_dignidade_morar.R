@@ -1,6 +1,10 @@
 library(tidyverse)
 
-setwd( "G:/Meu Drive/DOCS/Urbana_habitação/Dignidade_Morar/dignidade_morar")
+
+#aqui vou deixar as duas linhas digitadas e uma delas comentario para evitar ficar digitando sempre
+
+setwd( "C:/Users/fredr/Dropbox/B_PROJETOS_PESQUISA_GV/ZAP_DATA_HABITACAO/dignidade_morar")
+#setwd( "G:/Meu Drive/DOCS/Urbana_habitação/Dignidade_Morar/DIGNIDADE_V1")
 
 BASE<-read.csv("base_dignidade_v1.csv",header = TRUE, stringsAsFactors = FALSE)
 #names(BASE)
@@ -226,8 +230,11 @@ LOCfinal_valid <- LOCfinal_valid%>% mutate (valorm2 = iptu_m2+preco_m2+condomini
 
 
 #deflacionar valores
+#aqui, se o seu arquivo de excel esta no diretorio de trabalho, nao precisa digitar o caminho todo
+
 library(readxl)
-FipeZap <- read_excel("G:/Meu Drive/DOCS/Urbana_habitação/Dignidade_Morar/FipeZap.xlsx")
+#FipeZap <- read_excel("G:/Meu Drive/DOCS/Urbana_habitação/Dignidade_Morar/FipeZap.xlsx")
+FipeZap <- read_excel("FipeZap.xlsx")
 view(FipeZap)
 
 LOCfinal_valid <- full_join(LOCfinal_valid, FipeZap, by =c("Mes", "Ano"))
@@ -262,60 +269,61 @@ library(leaflet)
 library(sf)
 library(geobr)
 
-muni <- read_municipality(code_muni = 3513801,year=2010,showProgress = FALSE,simplified = FALSE)
+diadema <- read_municipality(code_muni = 3513801,year=2010,showProgress = FALSE,simplified = FALSE)
 
 leaflet() %>% addProviderTiles("CartoDB.Positron") %>%  
-  addPolygons(data=muni , color = "red", weight = 2, smoothFactor = 0.5,
+  addPolygons(data=diadema , color = "red", weight = 2, smoothFactor = 0.5,
               opacity = 1.0, fillOpacity = 0,
               highlightOptions = highlightOptions(color = "white", weight = 2,
                                                   bringToFront = TRUE))
 
 leaflet() %>% addProviderTiles("CartoDB.Positron") %>% 
   addCircleMarkers(data=LOCfinal_valid_sample,lat=LOCfinal_valid_sample$latitude,lng=LOCfinal_valid_sample$longitude,color = "blue", radius = 0.01) %>% 
-  addPolygons(data=muni , color = "red", weight = 2, smoothFactor = 0.5,
+  addPolygons(data=diadema , color = "red", weight = 2, smoothFactor = 0.5,
               opacity = 1.0, fillOpacity = 0,
               highlightOptions = highlightOptions(color = "white", weight = 2,
                                                   bringToFront=TRUE))
-#Mapa com o gradiente de valor
-library(leaflet)
-pal <- colorQuantile(c("lightgreen", "darkblue"), domain = LOCfinal_valid_sample$valorm2_r, n = 5, alpha = 0.5)
 
-# Criar o mapa com os limites dos municípios
-map <- leaflet() %>%
-  addProviderTiles("CartoDB.Positron") %>%
-  addPolygons(data = muni, color = "red", weight = 2, smoothFactor = 0.5,
+
+diadema_buffer <- st_buffer(diadema,2000)
+diadema_buffer <- st_simplify(diadema_buffer,dTolerance = 200)
+
+leaflet() %>% addProviderTiles("CartoDB.Positron") %>%  
+  addPolygons(data=diadema , color = "red", weight = 2, smoothFactor = 0.5,
               opacity = 1.0, fillOpacity = 0,
               highlightOptions = highlightOptions(color = "white", weight = 2,
-                                                  bringToFront = TRUE)) %>%
-  addCircleMarkers(data = LOCfinal_valid_sample, lat = ~latitude, lng = ~longitude,
-                   color = ~pal(valorm2_r), radius = 2, stroke = FALSE, fillOpacity = 0.8)
-#Adicionar a legenda após criar o mapa
-map <- addLegend(map, position = "bottomright", pal = pal, values = LOCfinal_valid_sample$valorm2_r,
-                 title = "Valor total do aluguel", opacity = 0.8)
-# Exibir o mapa
-map
+                                                  bringToFront = TRUE)) %>%  addPolygons(data=diadema_buffer , color = "green", weight = 2, smoothFactor = 0.5,
+                                                                                     opacity = 1.0, fillOpacity = 0,
+                                                                                     highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE)) %>% addCircleMarkers(data=LOCfinal_valid_sample,lat=LOCfinal_valid_sample$latitude,lng=LOCfinal_valid_sample$longitude,color = "blue", radius = 0.01)
+
+#selecionar apenas as amostrar que estao ate 2 km da fronteira de Diadema
+
+LOCfinal_valid_sample_sf <- st_as_sf(LOCfinal_valid_sample, coords = c("longitude", "latitude"))
+
+LOCfinal_valid_sample_sf_inside <- LOCfinal_valid_sample_sf[st_within(LOCfinal_valid_sample_sf, diadema_buffer), ]
+
+st_crs(LOCfinal_valid_sample_sf)
+LOCfinal_valid_sample_sf <- st_set_crs(LOCfinal_valid_sample_sf, 4674)
+st_crs(LOCfinal_valid_sample_sf)
+st_crs(diadema_buffer)
+
+leaflet() %>% addProviderTiles("CartoDB.Positron") %>%  
+  addPolygons(data=diadema , color = "red", weight = 2, smoothFactor = 0.5,
+              opacity = 1.0, fillOpacity = 0,
+              highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                  bringToFront = TRUE)) %>%  addPolygons(data=diadema_buffer , color = "green", weight = 2, smoothFactor = 0.5,
+                                                                                         opacity = 1.0, fillOpacity = 0,
+                                                                                         highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE)) %>% addCircleMarkers(data=LOCfinal_valid_sample_sf,lat=LOCfinal_valid_sample$latitude,lng=LOCfinal_valid_sample$longitude,color = "blue", radius = 0.01)
+
+LOCfinal_valid_sample_sf_inside <- st_intersection(LOCfinal_valid_sample_sf, diadema_buffer)
 
 
-#Estimar valor hedônico
-library(caret)
-LOCfinal_valid <- LOCfinal_valid %>%
-  mutate(apart = case_when(tipo_imovel == "APARTAMENTO" ~ 1, TRUE ~ 0))
-LOCfinal_valid <- LOCfinal_valid %>%
-  mutate(ln_valorm2 = log(valorm2_r))
-
-hedonic <- lm(valorm2 ~ area_util + +apart + dormitorios + suites + andar + vagas + banheiros, data = LOCfinal_valid)
-
-# Verificar os resultados da regressão
-summary(hedonic)
-
-# Fazer previsões com o modelo
-LOCfinal_valid$predicted_valorm2 <- predict(hedonic, newdata = LOCfinal_valid)
-
-# Comparar preços reais com preços previstos
-ggplot(data = LOCfinal_valid, aes(x = valorm2_r, y = predicted_valorm2)) +
-  geom_point() +
-  geom_abline(intercept = 0, slope = 1, color = "red") +
-  labs(title = "Comparação entre Preços Reais e Previstos",
-       x = "Preço Real (valorm2)",
-       y = "Preço Previsto")
-
+leaflet() %>% addProviderTiles("CartoDB.Positron") %>%  
+  addPolygons(data=diadema , color = "red", weight = 2, smoothFactor = 0.5,
+              opacity = 1.0, fillOpacity = 0,
+              highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                  bringToFront = TRUE)) %>%  addPolygons(data=diadema_buffer , color = "green", weight = 2, smoothFactor = 0.5,
+                                                                                         opacity = 1.0, fillOpacity = 0,
+                                                                                         highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE)) %>%   addCircleMarkers(data = LOCfinal_valid_sample_sf_inside,color = "blue", radius = 0.01)
+                                                                                                                                                                                                      
+                                                                                                                                                                                                       
