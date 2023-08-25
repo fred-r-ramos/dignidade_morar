@@ -276,8 +276,9 @@ leaflet() %>% addProviderTiles("CartoDB.Positron") %>%
               opacity = 1.0, fillOpacity = 0,
               highlightOptions = highlightOptions(color = "white", weight = 2,
                                                   bringToFront=TRUE))
-
-pal <- colorNumeric(c("lightred", "darkblue"), domain = LOCfinal_valid_sample$valorm2_r)
+#Mapa com o gradiente de valor
+library(leaflet)
+pal <- colorQuantile(c("lightgreen", "darkblue"), domain = LOCfinal_valid_sample$valorm2_r, n = 5, alpha = 0.5)
 
 # Criar o mapa com os limites dos municípios
 map <- leaflet() %>%
@@ -287,7 +288,34 @@ map <- leaflet() %>%
               highlightOptions = highlightOptions(color = "white", weight = 2,
                                                   bringToFront = TRUE)) %>%
   addCircleMarkers(data = LOCfinal_valid_sample, lat = ~latitude, lng = ~longitude,
-                   color = ~pal(valorm2_r), radius = 5, stroke = FALSE, fillOpacity = 0.8)
-
+                   color = ~pal(valorm2_r), radius = 2, stroke = FALSE, fillOpacity = 0.8)
+#Adicionar a legenda após criar o mapa
+map <- addLegend(map, position = "bottomright", pal = pal, values = LOCfinal_valid_sample$valorm2_r,
+                 title = "Valor total do aluguel", opacity = 0.8)
 # Exibir o mapa
 map
+
+
+#Estimar valor hedônico
+library(caret)
+LOCfinal_valid <- LOCfinal_valid %>%
+  mutate(apart = case_when(tipo_imovel == "APARTAMENTO" ~ 1, TRUE ~ 0))
+LOCfinal_valid <- LOCfinal_valid %>%
+  mutate(ln_valorm2 = log(valorm2_r))
+
+hedonic <- lm(valorm2 ~ area_util + +apart + dormitorios + suites + andar + vagas + banheiros, data = LOCfinal_valid)
+
+# Verificar os resultados da regressão
+summary(hedonic)
+
+# Fazer previsões com o modelo
+LOCfinal_valid$predicted_valorm2 <- predict(hedonic, newdata = LOCfinal_valid)
+
+# Comparar preços reais com preços previstos
+ggplot(data = LOCfinal_valid, aes(x = valorm2_r, y = predicted_valorm2)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, color = "red") +
+  labs(title = "Comparação entre Preços Reais e Previstos",
+       x = "Preço Real (valorm2)",
+       y = "Preço Previsto")
+
