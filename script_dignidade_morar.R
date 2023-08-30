@@ -3,7 +3,7 @@ library(tidyverse)
 #aqui vou deixar as duas linhas digitadas e uma delas comentario para evitar ficar digitando sempre
 
 setwd( "C:/Users/fredr/Dropbox/B_PROJETOS_PESQUISA_GV/ZAP_DATA_HABITACAO/dignidade_morar")
-setwd( "G:/Meu Drive/DOCS/Urbana_habitação/Dignidade_Morar/dignidade_morar")
+#setwd( "G:/Meu Drive/DOCS/Urbana_habitação/Dignidade_Morar/dignidade_morar")
 
 BASE<-read.csv("base_dignidade_v1.csv",header = TRUE, stringsAsFactors = FALSE)
 #names(BASE)
@@ -276,6 +276,7 @@ leaflet() %>% addProviderTiles("CartoDB.Positron") %>%
               highlightOptions = highlightOptions(color = "white", weight = 2,
                                                   bringToFront = TRUE))
 
+
 leaflet() %>% addProviderTiles("CartoDB.Positron") %>% 
   addCircleMarkers(data=LOCfinal_valid_sample,lat=LOCfinal_valid_sample$latitude,lng=LOCfinal_valid_sample$longitude,color = "blue", radius = 0.01) %>% 
   addPolygons(data=diadema , color = "red", weight = 2, smoothFactor = 0.5,
@@ -331,14 +332,16 @@ library(leaflet)
 pal <- colorQuantile(c("lightgreen", "darkblue"), domain = LOCfinal_valid_sample$valorm2_r, n = 5, alpha = 0.5)
 
 # Criar o mapa com os limites dos municípios
+
 map <- leaflet() %>%
   addProviderTiles("CartoDB.Positron") %>%
-  addPolygons(data = muni, color = "red", weight = 2, smoothFactor = 0.5,
+  addPolygons(data = diadema, color = "red", weight = 2, smoothFactor = 0.5,
               opacity = 1.0, fillOpacity = 0,
               highlightOptions = highlightOptions(color = "white", weight = 2,
                                                   bringToFront = TRUE)) %>%
   addCircleMarkers(data = LOCfinal_valid_sample, lat = ~latitude, lng = ~longitude,
                    color = ~pal(valorm2_r), radius = 2, stroke = FALSE, fillOpacity = 0.8)
+
 #Adicionar a legenda após criar o mapa
 map <- addLegend(map, position = "bottomright", pal = pal, values = LOCfinal_valid_sample$valorm2_r,
                  title = "Valor total do aluguel", opacity = 0.8)
