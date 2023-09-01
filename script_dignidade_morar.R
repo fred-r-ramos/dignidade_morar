@@ -24,6 +24,7 @@ LOCACAOm2$preco_m2[is.infinite(LOCACAOm2$preco_m2)] <- NA
 #Verificar observações duplicadas
 duplicated_rows <- duplicated(LOCACAOm2[, c('latitude', 'longitude','preco_m2','area_util', 'dormitorios','Mes','Ano')])
 duplicate_counts <- table(duplicated_rows)
+
 #contando o número de entradas unicas (FALSE) e entradas duplicadas (TRUE)
 print(duplicate_counts)
 
@@ -31,7 +32,7 @@ print(duplicate_counts)
 LOCACAOm2_sem_duplicadas <- LOCACAOm2[!duplicated_rows,]
 count(LOCACAOm2_sem_duplicadas)
 
-#limpando preco_m2=na e valores numéricos
+#limpando preco_m2=NA e valores numéricos
 LOCm2_clean <- LOCACAOm2_sem_duplicadas[!is.na(LOCACAOm2_sem_duplicadas$preco_m2), ]
 LOCm2_clean$preco_m2_num<- as.numeric (LOCm2_clean$preco_m2)
 count(LOCm2_clean)
@@ -219,6 +220,8 @@ LOCACAO_anotipo <- LOCfinal_valid %>% group_by(tipo_imovel, Ano) %>%
   summarise(total_count=n(),
             .groups = 'drop')
 
+LOCACAO_anotipo
+
 #Gerar soma preco+IPTU+concomínio
 LOCfinal_valid <- LOCfinal_valid %>%
   mutate(condominio_m2 = ifelse(is.na(condominio_m2), 0, condominio_m2))
@@ -253,11 +256,9 @@ sum_valor<- LOCfinal_valid  %>%
     max_valor = max(valorm2_r)
   )
 
-ggplot(sum_valor, aes(x = Ano, y = tipo_imovel, size = media_valor)) +
-  geom_point()+
-  labs(x = "Ano", y = "Tipo de imóvel", size= "Média valor/m2", title = "Valor/m2 do aluguel+IPTU+Condomínio por ano e tipo de imóvel" ) +
-  scale_size_continuous(range = c(5, 15))  # Adjust the range for bubble sizes
-
+ggplot(sum_valor, aes(x = Ano, y = media_valor, fill = tipo_imovel)) +
+  geom_bar(stat="identity", position=position_dodge())+
+  labs(x = "Ano", y = "Média valor/m2",fill= "Tipo de Imóvel", title = "Valor/m2 do aluguel+IPTU+Condomínio por ano e tipo de imóvel" )
 
 
 #gerando uma subamostra pra gerar o mapa
@@ -299,8 +300,6 @@ leaflet() %>% addProviderTiles("CartoDB.Positron") %>%
 #selecionar apenas as amostrar que estao ate 2 km da fronteira de Diadema
 
 LOCfinal_valid_sample_sf <- st_as_sf(LOCfinal_valid_sample, coords = c("longitude", "latitude"))
-
-LOCfinal_valid_sample_sf_inside <- LOCfinal_valid_sample_sf[st_within(LOCfinal_valid_sample_sf, diadema_buffer), ]
 
 st_crs(LOCfinal_valid_sample_sf)
 LOCfinal_valid_sample_sf <- st_set_crs(LOCfinal_valid_sample_sf, 4674)
@@ -344,10 +343,22 @@ map <- leaflet() %>%
 
 #Adicionar a legenda após criar o mapa
 map <- addLegend(map, position = "bottomright", pal = pal, values = LOCfinal_valid_sample$valorm2_r,
-                 title = "Valor total do aluguel", opacity = 0.8)
-# Exibir o mapa
+                 title = "Valor do aluguel por m2", opacity = 0.8)
+
 map
 
+#Novo mapa com legenda de preços quando aponto o cursor
+
+map1 <- leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data = diadema, color = "red", weight = 2, smoothFactor = 0.5,
+              opacity = 1.0, fillOpacity = 0,
+              highlightOptions = highlightOptions(color = "white", weight = 2,bringToFront = FALSE)) %>%
+  addCircleMarkers(data = LOCfinal_valid_sample_sf_inside, label = sprintf("%.2f", LOCfinal_valid_sample_sf_inside$valorm2_r),
+                   color = ~pal(valorm2_r), radius = 2, stroke = FALSE, fillOpacity = 0.8) %>% 
+  addLegend(position = "bottomright", pal = pal, values = LOCfinal_valid_sample_sf_inside$valorm2_r,title = "Valor do aluguel por m2", opacity = 0.8)
+
+map1
 
 #Estimar valor hedônico
 library(caret)
@@ -371,3 +382,4 @@ ggplot(data = LOCfinal_valid, aes(x = valorm2_r, y = predicted_valorm2)) +
   labs(title = "Comparação entre Preços Reais e Previstos",
        x = "Preço Real (valorm2)",
        y = "Preço Previsto")
+
