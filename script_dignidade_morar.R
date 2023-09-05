@@ -231,7 +231,7 @@ LOCfinal_valid <- LOCfinal_valid %>%
 LOCfinal_valid <- LOCfinal_valid%>% mutate (valorm2 = iptu_m2+preco_m2+condominio_m2)
 
 
-#deflacionar valores
+#inflacionar valores
 #aqui, se o seu arquivo de excel esta no diretorio de trabalho, nao precisa digitar o caminho todo
 
 library(readxl)
@@ -373,6 +373,20 @@ hedonic <- lm(valorm2 ~ area_util + +apart + dormitorios + suites + andar + vaga
 
 # Verificar os resultados da regressão
 summary(hedonic)
+
+#teste de significância do modelo
+resultado_anova <- anova(hedonic)
+print(resultado_anova)
+
+#teste de multicolinearidade (VIF)
+library(usdm)
+vif_result <- vif(hedonic)
+print(vif_result)
+
+#Teste de autocorrelação dos resíduos (Durbin-Watson)
+library(lmtest)
+teste_durbin_watson <- dwtest(hedonic)
+print(teste_durbin_watson)
 
 # Fazer previsões com o modelo
 LOCfinal_valid$predicted_valorm2 <- predict(hedonic, newdata = LOCfinal_valid)
