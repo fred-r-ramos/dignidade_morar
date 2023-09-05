@@ -3,7 +3,7 @@ library(tidyverse)
 #aqui vou deixar as duas linhas digitadas e uma delas comentario para evitar ficar digitando sempre
 
 setwd( "C:/Users/fredr/Dropbox/B_PROJETOS_PESQUISA_GV/ZAP_DATA_HABITACAO/dignidade_morar")
-#setwd( "G:/Meu Drive/DOCS/Urbana_habitação/Dignidade_Morar/dignidade_morar")
+setwd( "G:/My Drive/DOCS/Urbana_habitação/Dignidade_Morar/dignidade_morar")
 
 BASE<-read.csv("base_dignidade_v1.csv",header = TRUE, stringsAsFactors = FALSE)
 #names(BASE)
@@ -44,17 +44,17 @@ hist(precom2_decile, breaks = precom2_decile,main ="Histograma de preço/m2", xl
 
 #histograma extremos de preco_m2 
 LOCm2_clean_num <-as.numeric(LOCm2_clean$preco_m2)
-custom_breaks <- c(0,5,10,20,40,80,160,Inf)
+custom_breaks <- c(0,5,10,20,40,80,100,Inf)
 breaks <-cut(LOCm2_clean_num, breaks=custom_breaks, right= TRUE, include.lowest= TRUE, stringsAsFactors = FALSE, na.rm = TRUE)
 freq_table<-table(breaks)
 barplot(freq_table, main ="Histograma de preço/m2", xlab = "Preço/m2", ylab = "Frequência", col = "blue", border = "black")
 
-LOC_preco <- LOCm2_clean %>% group_by(preco_m2_num<5,preco_m2_num>160, na.rm = TRUE)%>%
+LOC_preco <- LOCm2_clean %>% group_by(preco_m2_num<5,preco_m2_num>100, na.rm = TRUE)%>%
   summarise(total_count=n(),
             .groups = 'drop')
 
-#gerando base 5<preço_m2<160
-LOCp_valid<- LOCm2_clean %>% filter(preco_m2_num>=5 & preco_m2_num<=160)
+#gerando base 5<preço_m2<100
+LOCp_valid<- LOCm2_clean %>% filter(preco_m2_num>=5 & preco_m2_num<=100)
 
 #limpando condominio_m2=na e valores numéricos
 LOCp_valid$condominio_m2_num<- as.numeric (LOCp_valid$condominio_m2)
@@ -77,7 +77,7 @@ LOC_condominio <- LOCp_valid%>% group_by(condominio_m2<5,condominio_m2>40, na.rm
   summarise(total_count=n(),
             .groups = 'drop')
 
-#gerando base 5<preço_m2<160 e condomínio<80
+#gerando base 5<preço_m2<100 e condomínio<80
 LOCpc_valid<- LOCp_valid %>% filter(condominio_m2<=40 | is.na (condominio_m2))
 
 
@@ -101,7 +101,7 @@ LOC_iptu <- LOCpc_valid %>% group_by(iptu_m2<1,iptu_m2>32, na.rm = TRUE)%>%
   summarise(total_count=n(),
             .groups = 'drop')
 
-#gerando base 5<preço_m2<160 e condomínio<80 e iptu<32
+#gerando base 5<preço_m2<100 e condomínio<80 e iptu<32
 LOCpci_valid<- LOCpc_valid %>% filter(iptu_m2<=32 |is.na (iptu_m2 ))
 
 
@@ -125,7 +125,7 @@ LOC_area <- LOCpci_valid %>% group_by(area_util<25,area_util_num>800, na.rm = TR
   summarise(total_count=n(),
             .groups = 'drop')
 
-#gerando base 5<preço_m2<160 e condomínio<80 e iptu<32 e área útil<800m2
+#gerando base 5<preço_m2<100 e condomínio<80 e iptu<32 e área útil<800m2
 LOCpcia_valid<- LOCpci_valid %>% filter(area_util<=800 |is.na (area_util ))
 
 
@@ -153,7 +153,7 @@ LOC_dorm <- LOCpcia_valid %>% group_by(dormitorios_num<1,dormitorios_num>9)%>%
   summarise(total_count=n(),
             .groups = 'drop')
 
-#gerando base 5<preço_m2<160 e condomínio<80 e iptu<32 e área útil<800m2 e dormitório<10
+#gerando base 5<preço_m2<100 e condomínio<80 e iptu<32 e área útil<800m2 e dormitório<10
 LOCpciad_valid<- LOCpcia_valid %>% filter(dormitorios_num<10 |is.na (dormitorios_num ))
 
 #limpando banheiros=na e valores numéricos
@@ -176,7 +176,7 @@ LOC_banh <- LOCpciad_valid %>% group_by(banheiros>11)%>%
   summarise(total_count=n(),
             .groups = 'drop')
 
-#gerando base 5<preço_m2<160 e condomínio<80 e iptu<32 e área útil<800m2 e dormitório<10
+#gerando base 5<preço_m2<100 e condomínio<80 e iptu<32 e área útil<800m2 e dormitório<10
 LOCpciadb_valid<- LOCpciad_valid %>% filter(banheiros<12 |is.na (banheiros ))
 
 #limpando vagas=na e valores numéricos
@@ -199,7 +199,7 @@ LOC_vagas <- LOCpciadb_valid %>% group_by(vagas<10, vagas>32)%>%
   summarise(total_count=n(),
             .groups = 'drop')
 
-#gerando base 5<preço_m2<160 e condomínio<80 e iptu<32 e área útil<800m2 e dormitório<10
+#gerando base 5<preço_m2<100 e condomínio<80 e iptu<32 e área útil<800m2 e dormitório<10
 LOCpciadbv_valid<- LOCpciadb_valid %>% filter(vagas<32 |is.na (vagas ))
 
 
@@ -235,9 +235,8 @@ LOCfinal_valid <- LOCfinal_valid%>% mutate (valorm2 = iptu_m2+preco_m2+condomini
 #aqui, se o seu arquivo de excel esta no diretorio de trabalho, nao precisa digitar o caminho todo
 
 library(readxl)
-#FipeZap <- read_excel("G:/Meu Drive/DOCS/Urbana_habitação/Dignidade_Morar/FipeZap.xlsx")
 FipeZap <- read_excel("FipeZap.xlsx")
-view(FipeZap)
+#view(FipeZap)
 
 LOCfinal_valid <- full_join(LOCfinal_valid, FipeZap, by =c("Mes", "Ano"))
 LOCfinal_valid <- LOCfinal_valid%>% mutate (valorm2_r = valorm2/FipeZAP)
@@ -294,8 +293,8 @@ leaflet() %>% addProviderTiles("CartoDB.Positron") %>%
               opacity = 1.0, fillOpacity = 0,
               highlightOptions = highlightOptions(color = "white", weight = 2,
                                                   bringToFront = TRUE)) %>%  addPolygons(data=diadema_buffer , color = "green", weight = 2, smoothFactor = 0.5,
-                                                                                     opacity = 1.0, fillOpacity = 0,
-                                                                                     highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE)) %>% addCircleMarkers(data=LOCfinal_valid_sample,lat=LOCfinal_valid_sample$latitude,lng=LOCfinal_valid_sample$longitude,color = "blue", radius = 0.01)
+                                                                                         opacity = 1.0, fillOpacity = 0,
+                                                                                         highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE)) %>% addCircleMarkers(data=LOCfinal_valid_sample,lat=LOCfinal_valid_sample$latitude,lng=LOCfinal_valid_sample$longitude,color = "blue", radius = 0.01)
 
 #selecionar apenas as amostrar que estao ate 2 km da fronteira de Diadema
 
@@ -324,7 +323,7 @@ leaflet() %>% addProviderTiles("CartoDB.Positron") %>%
                                                   bringToFront = TRUE)) %>%  addPolygons(data=diadema_buffer , color = "green", weight = 2, smoothFactor = 0.5,
                                                                                          opacity = 1.0, fillOpacity = 0,
                                                                                          highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE)) %>%   addCircleMarkers(data = LOCfinal_valid_sample_sf_inside,color = "blue", radius = 0.01)
-                                                                                                                                                                                                      
+
 
 #Mapa com de valores por m2
 
@@ -378,12 +377,13 @@ summary(hedonic)
 resultado_anova <- anova(hedonic)
 print(resultado_anova)
 
-#teste de multicolinearidade (VIF)
+#teste de multicolinearidade (VIF), apresenta alguma multicolinearidade em área e banbheiros, naturalmente
 library(usdm)
+library(car)
 vif_result <- vif(hedonic)
 print(vif_result)
 
-#Teste de autocorrelação dos resíduos (Durbin-Watson)
+#Teste de autocorrelação dos resíduos (Durbin-Watson), com autocorrelação positiva
 library(lmtest)
 teste_durbin_watson <- dwtest(hedonic)
 print(teste_durbin_watson)
@@ -441,6 +441,23 @@ ggplot(data = LOCfinal_valid_sf_inside, aes(x = valorm2_r, y = predicted_valorm2
   labs(title = "Comparação entre Preços Reais e Previstos",
        x = "Preço Real (valorm2)",
        y = "Preço Previsto")
+
+
+#teste de significância do modelo
+resultado_anova <- anova(hedonic_inside)
+print(resultado_anova)
+
+#teste de multicolinearidade (VIF), apresenta alguma multicolinearidade em área e banbheiros, naturalmente
+library(usdm)
+library(car)
+vif_result <- vif(hedonic_inside)
+print(vif_result)
+
+#Teste de autocorrelação dos resíduos (Durbin-Watson), com autocorrelação positiva
+library(lmtest)
+teste_durbin_watson <- dwtest(hedonic)
+print(teste_durbin_watson)
+
 
 #plotando um mapa com os valores outliers de valorm2_r > 100
 LOCfinal_valid_sf_inside_filter <- LOCfinal_valid_sf_inside %>% filter(LOCfinal_valid_sf_inside$valorm2_r>100)
