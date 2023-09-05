@@ -23,7 +23,7 @@ LOCACAOm2$preco_m2[is.infinite(LOCACAOm2$preco_m2)] <- NA
 
 #Verificar observações duplicadas
 duplicated_rows <- duplicated(LOCACAOm2[, c('latitude', 'longitude','preco_m2','area_util', 'dormitorios','Mes','Ano')])
-duplicate_counts <- table(duplicated_rows)
+duplicate_counts <- table(duplicated_rows) 
 
 #contando o número de entradas unicas (FALSE) e entradas duplicadas (TRUE)
 print(duplicate_counts)
@@ -326,7 +326,8 @@ leaflet() %>% addProviderTiles("CartoDB.Positron") %>%
                                                                                          highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE)) %>%   addCircleMarkers(data = LOCfinal_valid_sample_sf_inside,color = "blue", radius = 0.01)
                                                                                                                                                                                                       
 
-#Mapa com o gradiente de valor
+#Mapa com de valores por m2
+
 library(leaflet)
 pal <- colorQuantile(c("lightgreen", "darkblue"), domain = LOCfinal_valid_sample$valorm2_r, n = 5, alpha = 0.5)
 
@@ -360,7 +361,8 @@ map1 <- leaflet() %>%
 
 map1
 
-#Estimar valor hedônico
+
+#Estimar valor hedônico para amostras totais
 library(caret)
 LOCfinal_valid <- LOCfinal_valid %>%
   mutate(apart = case_when(tipo_imovel == "APARTAMENTO" ~ 1, TRUE ~ 0))
@@ -382,4 +384,61 @@ ggplot(data = LOCfinal_valid, aes(x = valorm2_r, y = predicted_valorm2)) +
   labs(title = "Comparação entre Preços Reais e Previstos",
        x = "Preço Real (valorm2)",
        y = "Preço Previsto")
+
+#gerando uma subamostra das amostras totais dentro do buffer 2km
+
+LOCfinal_valid_sf <- st_as_sf(LOCfinal_valid, coords = c("longitude", "latitude"))
+
+st_crs(LOCfinal_valid_sf)
+LOCfinal_valid_sf <- st_set_crs(LOCfinal_valid_sf, 4674)
+st_crs(LOCfinal_valid_sf)
+st_crs(diadema_buffer)
+
+LOCfinal_valid_sf_inside <- st_intersection(LOCfinal_valid_sf, diadema_buffer)
+
+count(LOCfinal_valid_sf_inside) #ficamos com uma amostra de 239271 observacoes
+
+#vizualizar esta amostra no mapa
+
+names(LOCfinal_valid_sf_inside)
+plot(LOCfinal_valid_sf_inside[41])
+summary(LOCfinal_valid_sf_inside[41])
+hist(LOCfinal_valid_sf_inside$precom2_r)
+
+#Estimar valor hedônico para amostras dentro do buffer
+
+LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
+  mutate(apart = case_when(tipo_imovel == "APARTAMENTO" ~ 1, TRUE ~ 0))
+LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
+  mutate(ln_valorm2 = log(valorm2_r))
+
+hedonic_inside <- lm(valorm2 ~ area_util + +apart + dormitorios + suites + andar + vagas + banheiros, data = LOCfinal_valid_sf_inside)
+
+# Verificar os resultados da regressão
+summary(hedonic_inside)
+
+# Fazer previsões com o modelo
+LOCfinal_valid_sf_inside$predicted_valorm2 <- predict(hedonic, newdata = LOCfinal_valid_sf_inside)
+
+# Comparar preços reais com preços previstos
+ggplot(data = LOCfinal_valid_sf_inside, aes(x = valorm2_r, y = predicted_valorm2)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, color = "red") +
+  labs(title = "Comparação entre Preços Reais e Previstos",
+       x = "Preço Real (valorm2)",
+       y = "Preço Previsto")
+
+#plotando um mapa com os valores outliers de valorm2_r > 100
+LOCfinal_valid_sf_inside_filter <- LOCfinal_valid_sf_inside %>% filter(LOCfinal_valid_sf_inside$valorm2_r>100)
+summary(LOCfinal_valid_sf_inside_filter$valorm2_r)
+plot(LOCfinal_valid_sf_inside_filter$precom2_r)
+map2 <- leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data = diadema, color = "red", weight = 2, smoothFactor = 0.5,
+              opacity = 1.0, fillOpacity = 0,
+              highlightOptions = highlightOptions(color = "white", weight = 2,bringToFront = FALSE)) %>%
+  addCircleMarkers(data = LOCfinal_valid_sf_inside_filter, label = sprintf("%.2f", LOCfinal_valid_sf_inside_filter$valorm2_r),
+                   color = ~pal(valorm2_r), radius = 2, stroke = FALSE, fillOpacity = 0.8) %>% 
+  addLegend(position = "bottomright", pal = pal, values = LOCfinal_valid_sf_inside_filter$valorm2_r,title = "Valor do aluguel por m2", opacity = 0.8)
+map2
 
