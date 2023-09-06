@@ -49,7 +49,7 @@ breaks <-cut(LOCm2_clean_num, breaks=custom_breaks, right= TRUE, include.lowest=
 freq_table<-table(breaks)
 barplot(freq_table, main ="Histograma de preço/m2", xlab = "Preço/m2", ylab = "Frequência", col = "blue", border = "black")
 
-LOC_preco <- LOCm2_clean %>% group_by(preco_m2_num<5,preco_m2_num, na.rm = TRUE)%>%
+LOC_preco <- LOCm2_clean %>% group_by(preco_m2_num<5,preco_m2_num>80, na.rm = TRUE)%>%
   summarise(total_count=n(),
             .groups = 'drop')
 
@@ -128,7 +128,6 @@ LOC_area <- LOCpci_valid %>% group_by(area_util<25,area_util_num>800, na.rm = TR
 #gerando base 5<preço_m2<80 e condomínio<20 e iptu<16 e área útil<800m2
 LOCpcia_valid<- LOCpci_valid %>% filter(area_util<=800 |is.na (area_util ))
 
-
 #limpando dormitorios=na e valores numéricos
 LOCpcia_valid$dormitorios_num<- as.numeric (LOCpcia_valid$dormitorios)
 count(LOCpcia_valid)
@@ -149,7 +148,7 @@ breaks <-cut(LOCm2_clean_dormitorios_num, breaks=custom_breaks, right= TRUE, inc
 freq_table<-table(breaks)
 barplot(freq_table, main ="Histograma de dormitórios", xlab = "dormitórios", ylab = "Frequência", col = "blue", border = "black")
 
-LOC_dorm <- LOCpcia_valid %>% group_by(dormitorios_num<1,dormitorios_num>9)%>%
+LOC_dorm <- LOCpcia_valid %>% group_by(dormitorios_num<1,dormitorios_num>=9)%>%
   summarise(total_count=n(),
             .groups = 'drop')
 
@@ -177,7 +176,7 @@ LOC_banh <- LOCpciad_valid %>% group_by(banheiros>8)%>%
             .groups = 'drop')
 
 #gerando base 5<preço_m2<80 e condomínio<20 e iptu<16 e área útil<800m2, dormitório<10 e banheiros <8
-LOCpciadb_valid<- LOCpciad_valid %>% filter(banheiros<8 |is.na (banheiros ))
+LOCpciadb_valid<- LOCpciad_valid %>% filter(banheiros<=8 |is.na (banheiros ))
 
 #limpando vagas=na e valores numéricos
 LOCpciadb_valid$vagas_num<- as.numeric (LOCpciadb_valid$vagas)
@@ -204,12 +203,12 @@ LOCpciadbv_valid<- LOCpciadb_valid %>% filter(vagas<8 |is.na (vagas ))
 
 
 #Filtros cruzados de area_util e vagas
-LOC_areavagas<- LOCpciadbv_valid %>% filter(area_util_num>800 & vagas>32)
-LOC_dormvagas<- LOCpciadbv_valid %>% filter(dormitorios_num< 1 & vagas>20)
-LOC_dormbanheiro<- LOCpciadbv_valid %>% filter(dormitorios_num< 1 & banheiros>5)
+LOC_areavagas<- LOCpciadbv_valid %>% filter(area_util_num>300 & vagas>8)
+LOC_dormvagas<- LOCpciadbv_valid %>% filter(dormitorios_num< 1 & vagas>5)
+LOC_dormbanheiro<- LOCpciadbv_valid %>% filter(dormitorios_num< 1 & banheiros>4)
 
-LOCpciadbv_valid <- LOCpciadbv_valid%>% mutate (limp_1 = dormitorios_num< 1 & banheiros>5)
-LOCpciadbv_valid <- LOCpciadbv_valid%>% mutate (limp_2 = dormitorios_num< 1 & vagas>20)
+LOCpciadbv_valid <- LOCpciadbv_valid%>% mutate (limp_1 = dormitorios_num< 1 & banheiros>4)
+LOCpciadbv_valid <- LOCpciadbv_valid%>% mutate (limp_2 = dormitorios_num< 1 & vagas>5)
 
 LOCfinal_valid <- LOCpciadbv_valid%>% filter (limp_1!="TRUE" & limp_2!="TRUE")
 count(LOCfinal_valid)
@@ -276,14 +275,12 @@ leaflet() %>% addProviderTiles("CartoDB.Positron") %>%
               highlightOptions = highlightOptions(color = "white", weight = 2,
                                                   bringToFront = TRUE))
 
-
 leaflet() %>% addProviderTiles("CartoDB.Positron") %>% 
   addCircleMarkers(data=LOCfinal_valid_sample,lat=LOCfinal_valid_sample$latitude,lng=LOCfinal_valid_sample$longitude,color = "blue", radius = 0.01) %>% 
   addPolygons(data=diadema , color = "red", weight = 2, smoothFactor = 0.5,
               opacity = 1.0, fillOpacity = 0,
               highlightOptions = highlightOptions(color = "white", weight = 2,
                                                   bringToFront=TRUE))
-
 
 diadema_buffer <- st_buffer(diadema,2000)
 diadema_buffer <- st_simplify(diadema_buffer,dTolerance = 200)
@@ -323,8 +320,6 @@ leaflet() %>% addProviderTiles("CartoDB.Positron") %>%
                                                   bringToFront = TRUE)) %>%  addPolygons(data=diadema_buffer , color = "green", weight = 2, smoothFactor = 0.5,
                                                                                          opacity = 1.0, fillOpacity = 0,
                                                                                          highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE)) %>%   addCircleMarkers(data = LOCfinal_valid_sample_sf_inside,color = "blue", radius = 0.01)
-
-
 #Mapa com de valores por m2
 
 library(leaflet)
@@ -360,47 +355,7 @@ map1 <- leaflet() %>%
 
 map1
 
-
-#Estimar valor hedônico para amostras totais
-library(caret)
-LOCfinal_valid <- LOCfinal_valid %>%
-  mutate(apart = case_when(tipo_imovel == "APARTAMENTO" ~ 1, TRUE ~ 0))
-LOCfinal_valid <- LOCfinal_valid %>%
-  mutate(ln_valorm2 = log(valorm2_r))
-
-hedonic <- lm(valorm2 ~ area_util + +apart + dormitorios + suites + andar + vagas + banheiros, data = LOCfinal_valid)
-
-# Verificar os resultados da regressão
-summary(hedonic)
-
-#teste de significância do modelo
-resultado_anova <- anova(hedonic)
-print(resultado_anova)
-
-#teste de multicolinearidade (VIF), apresenta alguma multicolinearidade em área e banbheiros, naturalmente
-library(usdm)
-library(car)
-vif_result <- vif(hedonic)
-print(vif_result)
-
-#Teste de autocorrelação dos resíduos (Durbin-Watson), com autocorrelação positiva
-library(lmtest)
-teste_durbin_watson <- dwtest(hedonic)
-print(teste_durbin_watson)
-
-# Fazer previsões com o modelo
-LOCfinal_valid$predicted_valorm2 <- predict(hedonic, newdata = LOCfinal_valid)
-
-# Comparar preços reais com preços previstos
-ggplot(data = LOCfinal_valid, aes(x = valorm2_r, y = predicted_valorm2)) +
-  geom_point() +
-  geom_abline(intercept = 0, slope = 1, color = "red") +
-  labs(title = "Comparação entre Preços Reais e Previstos",
-       x = "Preço Real (valorm2)",
-       y = "Preço Previsto")
-
 #gerando uma subamostra das amostras totais dentro do buffer 2km
-
 LOCfinal_valid_sf <- st_as_sf(LOCfinal_valid, coords = c("longitude", "latitude"))
 
 st_crs(LOCfinal_valid_sf)
@@ -413,18 +368,18 @@ LOCfinal_valid_sf_inside <- st_intersection(LOCfinal_valid_sf, diadema_buffer)
 count(LOCfinal_valid_sf_inside) #ficamos com uma amostra de 239271 observacoes
 
 #vizualizar esta amostra no mapa
-
 names(LOCfinal_valid_sf_inside)
 plot(LOCfinal_valid_sf_inside[41])
 summary(LOCfinal_valid_sf_inside[41])
 hist(LOCfinal_valid_sf_inside$precom2_r)
 
 #Estimar valor hedônico para amostras dentro do buffer
-
 LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
   mutate(apart = case_when(tipo_imovel == "APARTAMENTO" ~ 1, TRUE ~ 0))
 LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
   mutate(ln_valorm2 = log(valorm2_r))
+
+names(LOCfinal_valid_sf_inside)
 
 hedonic_inside <- lm(valorm2 ~ area_util + +apart + dormitorios + suites + andar + vagas + banheiros, data = LOCfinal_valid_sf_inside)
 
