@@ -3,7 +3,7 @@ library(tidyverse)
 #aqui vou deixar as duas linhas digitadas e uma delas comentario para evitar ficar digitando sempre
 
 setwd( "C:/Users/fredr/Dropbox/B_PROJETOS_PESQUISA_GV/ZAP_DATA_HABITACAO/dignidade_morar")
-setwd( "G:/My Drive/DOCS/Urbana_habitação/Dignidade_Morar/dignidade_morar")
+#setwd( "G:/My Drive/DOCS/Urbana_habitação/Dignidade_Morar/dignidade_morar")
 
 BASE<-read.csv("base_dignidade_v1.csv",header = TRUE, stringsAsFactors = FALSE)
 #names(BASE)
@@ -44,17 +44,17 @@ hist(precom2_decile, breaks = precom2_decile,main ="Histograma de preço/m2", xl
 
 #histograma extremos de preco_m2 
 LOCm2_clean_num <-as.numeric(LOCm2_clean$preco_m2)
-custom_breaks <- c(0,5,10,20,40,80,100,Inf)
+custom_breaks <- c(0,5,10,20,40,80,Inf)
 breaks <-cut(LOCm2_clean_num, breaks=custom_breaks, right= TRUE, include.lowest= TRUE, stringsAsFactors = FALSE, na.rm = TRUE)
 freq_table<-table(breaks)
 barplot(freq_table, main ="Histograma de preço/m2", xlab = "Preço/m2", ylab = "Frequência", col = "blue", border = "black")
 
-LOC_preco <- LOCm2_clean %>% group_by(preco_m2_num<5,preco_m2_num>100, na.rm = TRUE)%>%
+LOC_preco <- LOCm2_clean %>% group_by(preco_m2_num<5,preco_m2_num, na.rm = TRUE)%>%
   summarise(total_count=n(),
             .groups = 'drop')
 
-#gerando base 5<preço_m2<100
-LOCp_valid<- LOCm2_clean %>% filter(preco_m2_num>=5 & preco_m2_num<=100)
+#gerando base 5<preço_m2<80
+LOCp_valid<- LOCm2_clean %>% filter(preco_m2_num>=5 & preco_m2_num<=80)
 
 #limpando condominio_m2=na e valores numéricos
 LOCp_valid$condominio_m2_num<- as.numeric (LOCp_valid$condominio_m2)
@@ -68,17 +68,17 @@ hist(condominiom2_decile, breaks = condominiom2_decile,main ="Histograma de cond
 
 #histograma extremos de condominio_m2 
 LOCm2_clean_condominio_num<-as.numeric(LOCp_valid$condominio_m2_num)
-custom_breaks <- c(0,5,10,20,40,Inf)
+custom_breaks <- c(0,5,10,20,Inf)
 breaks <-cut(LOCm2_clean_condominio_num, breaks=custom_breaks, right= TRUE, include.lowest= TRUE, stringsAsFactors = FALSE, na.rm = TRUE)
 freq_table<-table(breaks)
 barplot(freq_table, main ="Histograma de condomínio/m2", xlab = "Condomínio/m2", ylab = "Frequência", col = "blue", border = "black")
 
-LOC_condominio <- LOCp_valid%>% group_by(condominio_m2<5,condominio_m2>40, na.rm = TRUE)%>%
+LOC_condominio <- LOCp_valid%>% group_by(condominio_m2<5,condominio_m2>20, na.rm = TRUE)%>%
   summarise(total_count=n(),
             .groups = 'drop')
 
-#gerando base 5<preço_m2<100 e condomínio<80
-LOCpc_valid<- LOCp_valid %>% filter(condominio_m2<=40 | is.na (condominio_m2))
+#gerando base 5<preço_m2<80 e condomínio<20
+LOCpc_valid<- LOCp_valid %>% filter(condominio_m2<=20 | is.na (condominio_m2))
 
 
 #limpando iptu_m2=na e valores numéricos
@@ -92,17 +92,17 @@ hist(iptum2_decile, breaks = iptum2_decile,main ="Histograma de IPTU/m2", xlab =
 
 #histograma extremos de iptu_m2 
 LOCm2_clean_iptu_num<-as.numeric(LOCp_valid$iptu_m2)
-custom_breaks <- c(0,1,2,4,8,16,32,Inf)
+custom_breaks <- c(0,1,2,4,8,16,Inf)
 breaks <-cut(LOCm2_clean_condominio_num, breaks=custom_breaks, right= TRUE, include.lowest= TRUE, stringsAsFactors = FALSE)
 freq_table<-table(breaks)
 barplot(freq_table, main ="Histograma de IPTU/m2", xlab = "IPTU/m2", ylab = "Frequência", col = "blue", border = "black")
 
-LOC_iptu <- LOCpc_valid %>% group_by(iptu_m2<1,iptu_m2>32, na.rm = TRUE)%>%
+LOC_iptu <- LOCpc_valid %>% group_by(iptu_m2<1,iptu_m2>16, na.rm = TRUE)%>%
   summarise(total_count=n(),
             .groups = 'drop')
 
-#gerando base 5<preço_m2<100 e condomínio<80 e iptu<32
-LOCpci_valid<- LOCpc_valid %>% filter(iptu_m2<=32 |is.na (iptu_m2 ))
+#gerando base 5<preço_m2<80 e condomínio<20 e iptu<16
+LOCpci_valid<- LOCpc_valid %>% filter(iptu_m2<=16 |is.na (iptu_m2 ))
 
 
 #limpando area_util=na e valores numéricos
@@ -125,7 +125,7 @@ LOC_area <- LOCpci_valid %>% group_by(area_util<25,area_util_num>800, na.rm = TR
   summarise(total_count=n(),
             .groups = 'drop')
 
-#gerando base 5<preço_m2<100 e condomínio<80 e iptu<32 e área útil<800m2
+#gerando base 5<preço_m2<80 e condomínio<20 e iptu<16 e área útil<800m2
 LOCpcia_valid<- LOCpci_valid %>% filter(area_util<=800 |is.na (area_util ))
 
 
@@ -153,7 +153,7 @@ LOC_dorm <- LOCpcia_valid %>% group_by(dormitorios_num<1,dormitorios_num>9)%>%
   summarise(total_count=n(),
             .groups = 'drop')
 
-#gerando base 5<preço_m2<100 e condomínio<80 e iptu<32 e área útil<800m2 e dormitório<10
+#gerando base 5<preço_m2<80 e condomínio<20 e iptu<16 e área útil<800m2 e dormitório<10
 LOCpciad_valid<- LOCpcia_valid %>% filter(dormitorios_num<10 |is.na (dormitorios_num ))
 
 #limpando banheiros=na e valores numéricos
@@ -167,17 +167,17 @@ hist(banho_decile, breaks = banho_decile,main ="Histograma de Banheiros", xlab =
 
 #histograma extremos de banheiros 
 LOCm2_clean_banheiros_num<-as.numeric(LOCpciad_valid$banheiros)
-custom_breaks <- c(0,1,2,4,8,12,Inf)
+custom_breaks <- c(0,1,2,4,8,Inf)
 breaks <-cut(LOCm2_clean_banheiros_num, breaks=custom_breaks, right= TRUE, include.lowest= TRUE, stringsAsFactors = FALSE)
 freq_table<-table(breaks)
 barplot(freq_table, main ="Histograma de  Banheiros", xlab = "Banheiros", ylab = "Frequência", col = "blue", border = "black")
 
-LOC_banh <- LOCpciad_valid %>% group_by(banheiros>11)%>%
+LOC_banh <- LOCpciad_valid %>% group_by(banheiros>8)%>%
   summarise(total_count=n(),
             .groups = 'drop')
 
-#gerando base 5<preço_m2<100 e condomínio<80 e iptu<32 e área útil<800m2 e dormitório<10
-LOCpciadb_valid<- LOCpciad_valid %>% filter(banheiros<12 |is.na (banheiros ))
+#gerando base 5<preço_m2<80 e condomínio<20 e iptu<16 e área útil<800m2, dormitório<10 e banheiros <8
+LOCpciadb_valid<- LOCpciad_valid %>% filter(banheiros<8 |is.na (banheiros ))
 
 #limpando vagas=na e valores numéricos
 LOCpciadb_valid$vagas_num<- as.numeric (LOCpciadb_valid$vagas)
@@ -190,17 +190,17 @@ hist(vagas_decile, breaks = vagas_decile,main ="Histograma de Vagas de Garagem",
 
 #histograma extremos de vagas 
 LOCm2_clean_vagas_num<-as.numeric(LOCpciadb_valid$vagas)
-custom_breaks <- c(0,1,2,4,8,16,32,Inf)
+custom_breaks <- c(0,1,2,4,8,Inf)
 breaks <-cut(LOCm2_clean_vagas_num, breaks=custom_breaks, right= TRUE, include.lowest= TRUE, stringsAsFactors = FALSE)
 freq_table<-table(breaks)
 barplot(freq_table, main ="Histograma de Vagas de garagem", xlab = "Área Vagas", ylab = "Frequência", col = "blue", border = "black")
 
-LOC_vagas <- LOCpciadb_valid %>% group_by(vagas<10, vagas>32)%>%
+LOC_vagas <- LOCpciadb_valid %>% group_by(vagas<8)%>%
   summarise(total_count=n(),
             .groups = 'drop')
 
-#gerando base 5<preço_m2<100 e condomínio<80 e iptu<32 e área útil<800m2 e dormitório<10
-LOCpciadbv_valid<- LOCpciadb_valid %>% filter(vagas<32 |is.na (vagas ))
+#gerando base 5<preço_m2<80 e condomínio<20 e iptu<16 e área útil<800m2, dormitório<10, banheiros <8 e vagas <8
+LOCpciadbv_valid<- LOCpciadb_valid %>% filter(vagas<8 |is.na (vagas ))
 
 
 #Filtros cruzados de area_util e vagas
@@ -455,7 +455,7 @@ print(vif_result)
 
 #Teste de autocorrelação dos resíduos (Durbin-Watson), com autocorrelação positiva
 library(lmtest)
-teste_durbin_watson <- dwtest(hedonic)
+teste_durbin_watson <- dwtest(hedonic_inside)
 print(teste_durbin_watson)
 
 
