@@ -365,7 +365,7 @@ st_crs(diadema_buffer)
 
 LOCfinal_valid_sf_inside <- st_intersection(LOCfinal_valid_sf, diadema_buffer)
 
-count(LOCfinal_valid_sf_inside) #ficamos com uma amostra de 239271 observacoes
+count(LOCfinal_valid_sf_inside) #ficamos com uma amostra de 233349 observacoes
 
 #vizualizar esta amostra no mapa
 names(LOCfinal_valid_sf_inside)
@@ -387,7 +387,7 @@ hedonic_inside <- lm(valorm2 ~ area_util + +apart + dormitorios + suites + andar
 summary(hedonic_inside)
 
 # Fazer previsões com o modelo
-LOCfinal_valid_sf_inside$predicted_valorm2 <- predict(hedonic, newdata = LOCfinal_valid_sf_inside)
+LOCfinal_valid_sf_inside$predicted_valorm2 <- predict(hedonic_inside, newdata = LOCfinal_valid_sf_inside)
 
 # Comparar preços reais com preços previstos
 ggplot(data = LOCfinal_valid_sf_inside, aes(x = valorm2_r, y = predicted_valorm2)) +
@@ -417,7 +417,7 @@ print(teste_durbin_watson)
 #plotando um mapa com os valores outliers de valorm2_r > 100
 LOCfinal_valid_sf_inside_filter <- LOCfinal_valid_sf_inside %>% filter(LOCfinal_valid_sf_inside$valorm2_r>100)
 summary(LOCfinal_valid_sf_inside_filter$valorm2_r)
-plot(LOCfinal_valid_sf_inside_filter$precom2_r)
+
 map2 <- leaflet() %>%
   addProviderTiles("CartoDB.Positron") %>%
   addPolygons(data = diadema, color = "red", weight = 2, smoothFactor = 0.5,
@@ -427,4 +427,5 @@ map2 <- leaflet() %>%
                    color = ~pal(valorm2_r), radius = 2, stroke = FALSE, fillOpacity = 0.8) %>% 
   addLegend(position = "bottomright", pal = pal, values = LOCfinal_valid_sf_inside_filter$valorm2_r,title = "Valor do aluguel por m2", opacity = 0.8)
 map2
+
 
