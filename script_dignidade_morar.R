@@ -428,3 +428,24 @@ map2 <- leaflet() %>%
   addLegend(position = "bottomright", pal = pal, values = LOCfinal_valid_sf_inside_filter$valorm2_r,title = "Valor do aluguel por m2", opacity = 0.8)
 map2
 
+library(dplyr)
+# Selecionar as colunas relevantes para a identificação de duplicatas e ordenação
+cols_for_duplicates <- c('area_util','tipo_imovel','cep','endereco',  'dormitorios', 'banheiros', 'vagas', 'suites', 'andar', 'ano_construcao', 'data_ref','geometry')
+
+# Verificar observações duplicadas com base nas colunas selecionadas
+duplicated_rows <- duplicated(LOCfinal_valid_sf_inside[, cols_for_duplicates])
+
+# Gerar IDs únicos para observações duplicadas
+LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
+  mutate(duplicate_id = cumsum(duplicated_rows)) %>%
+  group_by(duplicate_id) %>%
+  arrange(data_ref) %>%
+  mutate(ID = row_number()) %>%
+  ungroup()
+
+# A coluna "ID" conterá os IDs únicos ordenados por data para observações duplicadas
+# Verificar as primeiras linhas do conjunto de dados
+head(LOCfinal_valid_sf_inside)
+
+# Resumir a coluna "ID"
+summary(LOCfinal_valid_sf_inside$ID)
