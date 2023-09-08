@@ -365,7 +365,13 @@ st_crs(diadema_buffer)
 
 LOCfinal_valid_sf_inside <- st_intersection(LOCfinal_valid_sf, diadema_buffer)
 
-count(LOCfinal_valid_sf_inside) #ficamos com uma amostra de 239271 observacoes
+count(LOCfinal_valid_sf_inside) #ficamos com uma amostra de 233349 observacoes
+
+#incluir variável latitude e longitude
+
+
+#criar variável distância do centro ou prefeitura de Diadema
+
 
 #vizualizar esta amostra no mapa
 names(LOCfinal_valid_sf_inside)
@@ -373,21 +379,21 @@ plot(LOCfinal_valid_sf_inside[41])
 summary(LOCfinal_valid_sf_inside[41])
 hist(LOCfinal_valid_sf_inside$precom2_r)
 
+
 #Estimar valor hedônico para amostras dentro do buffer
 LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
   mutate(apart = case_when(tipo_imovel == "APARTAMENTO" ~ 1, TRUE ~ 0))
-LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
-  mutate(ln_valorm2 = log(valorm2_r))
+#LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
+ # mutate(ln_valorm2 = log(valorm2_r))
 
 names(LOCfinal_valid_sf_inside)
-
-hedonic_inside <- lm(valorm2 ~ area_util + +apart + dormitorios + suites + andar + vagas + banheiros, data = LOCfinal_valid_sf_inside)
+hedonic_inside <- lm(valorm2 ~ area_util + +apart + dormitorios + suites + andar + vagas + banheiros + latitude +longitude +distancia, data = LOCfinal_valid_sf_inside)
 
 # Verificar os resultados da regressão
 summary(hedonic_inside)
 
 # Fazer previsões com o modelo
-LOCfinal_valid_sf_inside$predicted_valorm2 <- predict(hedonic, newdata = LOCfinal_valid_sf_inside)
+LOCfinal_valid_sf_inside$predicted_valorm2 <- predict(hedonic_inside, newdata = LOCfinal_valid_sf_inside)
 
 # Comparar preços reais com preços previstos
 ggplot(data = LOCfinal_valid_sf_inside, aes(x = valorm2_r, y = predicted_valorm2)) +
@@ -428,24 +434,9 @@ map2 <- leaflet() %>%
   addLegend(position = "bottomright", pal = pal, values = LOCfinal_valid_sf_inside_filter$valorm2_r,title = "Valor do aluguel por m2", opacity = 0.8)
 map2
 
+
 library(dplyr)
-# Selecionar as colunas relevantes para a identificação de duplicatas e ordenação
-cols_for_duplicates <- c('area_util','tipo_imovel','cep','endereco',  'dormitorios', 'banheiros', 'vagas', 'suites', 'andar', 'ano_construcao', 'data_ref','geometry')
+#identifcando observações duplicadas
+# Concatenar todas as colunas relevantes em uma única coluna
+LOCfinal_valid_sf_inside$duplic_concat <- paste(LOCfinal_valid_sf_inside$area_util,LOCfinal_valid_sf_inside$tipo_imovel,LOCfinal_valid_sf_inside$cep,LOCfinal_valid_sf_inside$endereco,LOCfinal_valid_sf_inside$dormitorios,LOCfinal_valid_sf_inside$banheiros,LOCfinal_valid_sf_inside$vagas,LOCfinal_valid_sf_inside$suites,LOCfinal_valid_sf_inside$andar,LOCfinal_valid_sf_inside$ano_construcao,LOCfinal_valid_sf_inside$geometry, sep = "|")
 
-# Verificar observações duplicadas com base nas colunas selecionadas
-duplicated_rows <- duplicated(LOCfinal_valid_sf_inside[, cols_for_duplicates])
-
-# Gerar IDs únicos para observações duplicadas
-LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
-  mutate(duplicate_id = cumsum(duplicated_rows)) %>%
-  group_by(duplicate_id) %>%
-  arrange(data_ref) %>%
-  mutate(ID = row_number()) %>%
-  ungroup()
-
-# A coluna "ID" conterá os IDs únicos ordenados por data para observações duplicadas
-# Verificar as primeiras linhas do conjunto de dados
-head(LOCfinal_valid_sf_inside)
-
-# Resumir a coluna "ID"
-summary(LOCfinal_valid_sf_inside$ID)
