@@ -405,6 +405,7 @@ LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
 #LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
  # mutate(ln_valorm2 = log(valorm2_r))
 
+#com novas variáveis
 names(LOCfinal_valid_sf_inside)
 hedonic_inside <- lm(valorm2 ~ area_util + +apart + dormitorios + suites + andar + vagas + banheiros + latitude +longitude +distancia, data = LOCfinal_valid_sf_inside)
 
