@@ -366,15 +366,31 @@ st_crs(diadema_buffer)
 LOCfinal_valid_sf_inside <- st_intersection(LOCfinal_valid_sf, diadema_buffer)
 
 count(LOCfinal_valid_sf_inside) #ficamos com uma amostra de 233349 observacoes
-<<<<<<< HEAD
-=======
-
-#incluir variável latitude e longitude
-
 
 #criar variável distância do centro ou prefeitura de Diadema
+centro_diadema <- st_point(c(-46.62563335778199,-23.68665579771163 ))  # ponto indicando o centro de Diadema
+centro_diadema_sf <- st_sf(geometry = st_sfc(centro_diadema))
+centro_diadema_sf <- st_set_crs(centro_diadema_sf, 4674)
 
->>>>>>> 6e7db8f50cb503ae863c2e2cb4daf1a9dd70df26
+LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
+  mutate(dist_center = st_distance(LOCfinal_valid_sf_inside, centro_diadema_sf))
+names(LOCfinal_valid_sf_inside)
+
+#incluir variável latitude e longitude
+coordinates <- st_coordinates(LOCfinal_valid_sf_inside_filter)
+
+LOCfinal_valid_sf_inside_filter$latitude <- coordinates[, "Y"]
+LOCfinal_valid_sf_inside_filter$longitude <- coordinates[, "X"]
+
+crs(centro_diadema_sf)
+crs(LOCfinal_valid_sf_inside_filter)
+
+
+st_crs(LOCfinal_valid_sample_sf)
+LOCfinal_valid_sample_sf <- st_set_crs(LOCfinal_valid_sample_sf, 4674)
+st_crs(LOCfinal_valid_sample_sf)
+st_crs(diadema_buffer)
+
 
 #vizualizar esta amostra no mapa
 names(LOCfinal_valid_sf_inside)
@@ -437,12 +453,9 @@ map2 <- leaflet() %>%
   addLegend(position = "bottomright", pal = pal, values = LOCfinal_valid_sf_inside_filter$valorm2_r,title = "Valor do aluguel por m2", opacity = 0.8)
 map2
 
-
-<<<<<<< HEAD
-=======
 library(dplyr)
 #identifcando observações duplicadas
 # Concatenar todas as colunas relevantes em uma única coluna
 LOCfinal_valid_sf_inside$duplic_concat <- paste(LOCfinal_valid_sf_inside$area_util,LOCfinal_valid_sf_inside$tipo_imovel,LOCfinal_valid_sf_inside$cep,LOCfinal_valid_sf_inside$endereco,LOCfinal_valid_sf_inside$dormitorios,LOCfinal_valid_sf_inside$banheiros,LOCfinal_valid_sf_inside$vagas,LOCfinal_valid_sf_inside$suites,LOCfinal_valid_sf_inside$andar,LOCfinal_valid_sf_inside$ano_construcao,LOCfinal_valid_sf_inside$geometry, sep = "|")
 
->>>>>>> 6e7db8f50cb503ae863c2e2cb4daf1a9dd70df26
+
