@@ -320,30 +320,11 @@ leaflet() %>% addProviderTiles("CartoDB.Positron") %>%
                                                   bringToFront = TRUE)) %>%  addPolygons(data=diadema_buffer , color = "green", weight = 2, smoothFactor = 0.5,
                                                                                          opacity = 1.0, fillOpacity = 0,
                                                                                          highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE)) %>%   addCircleMarkers(data = LOCfinal_valid_sample_sf_inside,color = "blue", radius = 0.01)
-#Mapa com de valores por m2
+#Mapa com de valores por m2 com legenda de preços quando aponto o cursor
+
 
 library(leaflet)
 pal <- colorQuantile(c("lightgreen", "darkblue"), domain = LOCfinal_valid_sample$valorm2_r, n = 5, alpha = 0.5)
-
-# Criar o mapa com os limites dos municípios
-
-map <- leaflet() %>%
-  addProviderTiles("CartoDB.Positron") %>%
-  addPolygons(data = diadema, color = "red", weight = 2, smoothFactor = 0.5,
-              opacity = 1.0, fillOpacity = 0,
-              highlightOptions = highlightOptions(color = "white", weight = 2,
-                                                  bringToFront = TRUE)) %>%
-  addCircleMarkers(data = LOCfinal_valid_sample, lat = ~latitude, lng = ~longitude,
-                   color = ~pal(valorm2_r), radius = 2, stroke = FALSE, fillOpacity = 0.8)
-
-#Adicionar a legenda após criar o mapa
-map <- addLegend(map, position = "bottomright", pal = pal, values = LOCfinal_valid_sample$valorm2_r,
-                 title = "Valor do aluguel por m2", opacity = 0.8)
-
-map
-
-#Novo mapa com legenda de preços quando aponto o cursor
-
 map1 <- leaflet() %>%
   addProviderTiles("CartoDB.Positron") %>%
   addPolygons(data = diadema, color = "red", weight = 2, smoothFactor = 0.5,
@@ -367,7 +348,7 @@ LOCfinal_valid_sf_inside <- st_intersection(LOCfinal_valid_sf, diadema_buffer)
 
 count(LOCfinal_valid_sf_inside) #ficamos com uma amostra de 233349 observacoes
 
-#criar variável distância do centro ou prefeitura de Diadema
+#criar variável distância do centro de Diadema
 centro_diadema <- st_point(c(-46.62563335778199,-23.68665579771163 ))  # ponto indicando o centro de Diadema
 centro_diadema_sf <- st_sf(geometry = st_sfc(centro_diadema))
 centro_diadema_sf <- st_set_crs(centro_diadema_sf, 4674)
@@ -391,7 +372,6 @@ LOCfinal_valid_sample_sf <- st_set_crs(LOCfinal_valid_sample_sf, 4674)
 st_crs(LOCfinal_valid_sample_sf)
 st_crs(diadema_buffer)
 
-
 #vizualizar esta amostra no mapa
 names(LOCfinal_valid_sf_inside)
 plot(LOCfinal_valid_sf_inside[41])
@@ -404,8 +384,6 @@ LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
   mutate(apart = case_when(tipo_imovel == "APARTAMENTO" ~ 1, TRUE ~ 0))
 #LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
  # mutate(ln_valorm2 = log(valorm2_r))
-
-#com novas variáveis
 names(LOCfinal_valid_sf_inside)
 hedonic_inside <- lm(valorm2 ~ area_util + +apart + dormitorios + suites + andar + vagas + banheiros + latitude +longitude +distancia, data = LOCfinal_valid_sf_inside)
 
