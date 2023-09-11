@@ -321,8 +321,6 @@ leaflet() %>% addProviderTiles("CartoDB.Positron") %>%
                                                                                          opacity = 1.0, fillOpacity = 0,
                                                                                          highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE)) %>%   addCircleMarkers(data = LOCfinal_valid_sample_sf_inside,color = "blue", radius = 0.01)
 #Mapa com de valores por m2 com legenda de preços quando aponto o cursor
-
-
 library(leaflet)
 pal <- colorQuantile(c("lightgreen", "darkblue"), domain = LOCfinal_valid_sample$valorm2_r, n = 5, alpha = 0.5)
 map1 <- leaflet() %>%
@@ -354,7 +352,7 @@ centro_diadema_sf <- st_sf(geometry = st_sfc(centro_diadema))
 centro_diadema_sf <- st_set_crs(centro_diadema_sf, 4674)
 
 LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
-  mutate(dist_center = st_distance(LOCfinal_valid_sf_inside, centro_diadema_sf))
+  mutate(dist_center = as.numeric(st_distance(LOCfinal_valid_sf_inside, centro_diadema_sf)))
 names(LOCfinal_valid_sf_inside)
 
 #incluir variável latitude e longitude
@@ -369,14 +367,14 @@ plot(LOCfinal_valid_sf_inside[41])
 summary(LOCfinal_valid_sf_inside[41])
 hist(LOCfinal_valid_sf_inside$precom2_r)
 
-
 #Estimar valor hedônico para amostras dentro do buffer
+# Converter dist_center em 'numeric'
+LOCfinal_valid_sf_inside$distcenter <- as.numeric(LOCfinal_valid_sf_inside$dist_center)
 LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
   mutate(apart = case_when(tipo_imovel == "APARTAMENTO" ~ 1, TRUE ~ 0))
-#LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
- # mutate(ln_valorm2 = log(valorm2_r))
+
 names(LOCfinal_valid_sf_inside)
-hedonic_inside <- lm(valorm2 ~ area_util + +apart + dormitorios + suites + andar + vagas + banheiros + latitude +longitude +distancia, data = LOCfinal_valid_sf_inside)
+hedonic_inside <- lm(valorm2 ~ area_util  +apart + dormitorios + suites + andar + vagas + banheiros + latitude +longitude +dist_center, data = LOCfinal_valid_sf_inside)
 
 # Verificar os resultados da regressão
 summary(hedonic_inside)
@@ -384,20 +382,22 @@ summary(hedonic_inside)
 # Fazer previsões com o modelo
 LOCfinal_valid_sf_inside$predicted_valorm2 <- predict(hedonic_inside, newdata = LOCfinal_valid_sf_inside)
 
+#Descritivas
+summary(LOCfinal_valid_sf_inside[c("predicted_valorm2","valorm2_r","dormitorios","suites","vagas","banheiros")])
+
 # Comparar preços reais com preços previstos
 ggplot(data = LOCfinal_valid_sf_inside, aes(x = valorm2_r, y = predicted_valorm2)) +
   geom_point() +
-  geom_abline(intercept = 0, slope = 1, color = "red") +
+  geom_abline(intercept = -20, slope = 1, color = "red") +
   labs(title = "Comparação entre Preços Reais e Previstos",
        x = "Preço Real (valorm2)",
        y = "Preço Previsto")
-
 
 #teste de significância do modelo
 resultado_anova <- anova(hedonic_inside)
 print(resultado_anova)
 
-#teste de multicolinearidade (VIF), apresenta alguma multicolinearidade em área e banbheiros, naturalmente
+#teste de multicolinearidade (VIF), apresenta alguma multicolinearidade 
 library(usdm)
 library(car)
 vif_result <- vif(hedonic_inside)
@@ -407,7 +407,6 @@ print(vif_result)
 library(lmtest)
 teste_durbin_watson <- dwtest(hedonic_inside)
 print(teste_durbin_watson)
-
 
 #plotando um mapa com os valores outliers de valorm2_r > 100
 LOCfinal_valid_sf_inside_filter <- LOCfinal_valid_sf_inside %>% filter(LOCfinal_valid_sf_inside$valorm2_r>100)
@@ -423,9 +422,180 @@ map2 <- leaflet() %>%
   addLegend(position = "bottomright", pal = pal, values = LOCfinal_valid_sf_inside_filter$valorm2_r,title = "Valor do aluguel por m2", opacity = 0.8)
 map2
 
-library(dplyr)
-#identifcando observações duplicadas
-# Concatenar todas as colunas relevantes em uma única coluna
-LOCfinal_valid_sf_inside$duplic_concat <- paste(LOCfinal_valid_sf_inside$area_util,LOCfinal_valid_sf_inside$tipo_imovel,LOCfinal_valid_sf_inside$cep,LOCfinal_valid_sf_inside$endereco,LOCfinal_valid_sf_inside$dormitorios,LOCfinal_valid_sf_inside$banheiros,LOCfinal_valid_sf_inside$vagas,LOCfinal_valid_sf_inside$suites,LOCfinal_valid_sf_inside$andar,LOCfinal_valid_sf_inside$ano_construcao,LOCfinal_valid_sf_inside$geometry, sep = "|")
+# Estimar modelo de aluguel social
+# Criar as características desejadas
+LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>% 
+  mutate(area_s =50,
+         dorm2 = 2,
+         suite0 = 0,
+         vaga1 = 1,
+         banho1 = 1)
 
+# Acessar diretamente os coeficientes estimados do modelo 'hedonic_inside'
+coeficientes <- coef(hedonic_inside)
+
+# Calcular o valor de 'valorsocial_est' com base nos coeficientes e nas características criadas
+LOCfinal_valid_sf_inside$valorsocial_est <- coeficientes[1] +
+  coeficientes[2] * LOCfinal_valid_sf_inside$area_s +
+  coeficientes[3] * LOCfinal_valid_sf_inside$apart +
+  coeficientes[4] * LOCfinal_valid_sf_inside$dorm2 +
+  coeficientes[5] * LOCfinal_valid_sf_inside$suite0 +
+  coeficientes[6] * LOCfinal_valid_sf_inside$andar
+  coeficientes[7] * LOCfinal_valid_sf_inside$vaga1 +
+  coeficientes[8] * LOCfinal_valid_sf_inside$banho1
+  coeficientes[9] * LOCfinal_valid_sf_inside$latitude
+  coeficientes[10] * LOCfinal_valid_sf_inside$longitude
+  coeficientes[11] * LOCfinal_valid_sf_inside$dist
+
+summary(LOCfinal_valid_sf_inside$valorsocial_est)
+
+#mapa com valores do aluguel social
+pal <- colorNumeric(c("lightgreen", "darkblue"), 
+                    domain = LOCfinal_valid_sf_inside$valorsocial_est, 
+                    na.color = "gray")
+
+map3 <- leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data = diadema, color = "red", weight = 2, smoothFactor = 0.5,
+              opacity = 1.0, fillOpacity = 0,
+              highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = FALSE)) %>%
+  addCircleMarkers(data = LOCfinal_valid_sf_inside, 
+                   label = sprintf("%.2f", LOCfinal_valid_sf_inside$valorsocial_est),
+                   color = ~pal(valorsocial_est), 
+                   radius = 2, 
+                   stroke = FALSE, 
+                   fillOpacity = 0.8) %>% 
+  addLegend(position = "bottomright", 
+            pal = pal, 
+            values = LOCfinal_valid_sf_inside$valorsocial_est,
+            title = "Valor do aluguel social por m2", 
+            opacity = 0.8)
+map3
+
+#MODELO EM LOG
+#gerar logaritmos
+LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
+  mutate(ln_valorm2 = log(valorm2_r),
+         ln_area=log(area_util),
+         ln_dorm=log(dormitorios),
+         ln_suite=log(suites),
+         ln_andar=log(andar),
+         ln_vaga=log(vagas),
+         ln_banho=log(banheiros),
+         ln_dist=log(dist_center))
+
+#verificar e corrigir infinitos
+any(is.infinite(LOCfinal_valid_sf_inside$ln_valorm2))
+any(is.infinite(LOCfinal_valid_sf_inside$ln_area))
+any(is.infinite(LOCfinal_valid_sf_inside$ln_banho))
+any(is.infinite(LOCfinal_valid_sf_inside$ln_dorm))
+any(is.infinite(LOCfinal_valid_sf_inside$ln_suite))
+any(is.infinite(LOCfinal_valid_sf_inside$ln_andar))
+any(is.infinite(LOCfinal_valid_sf_inside$ln_dist))
+any(is.infinite(LOCfinal_valid_sf_inside$ln_vaga))
+
+LOCfinal_valid_sf_inside$ln_vaga <- replace(LOCfinal_valid_sf_inside$ln_vaga, is.infinite(LOCfinal_valid_sf_inside$ln_vaga), 0)
+LOCfinal_valid_sf_inside$ln_dorm <- replace(LOCfinal_valid_sf_inside$ln_dorm, is.infinite(LOCfinal_valid_sf_inside$ln_dorm), 0)
+LOCfinal_valid_sf_inside$ln_andar <- replace(LOCfinal_valid_sf_inside$ln_andar, is.infinite(LOCfinal_valid_sf_inside$ln_andar), 0)
+LOCfinal_valid_sf_inside$ln_dorm <- replace(LOCfinal_valid_sf_inside$ln_dorm, is.infinite(LOCfinal_valid_sf_inside$ln_dorm), 0)
+LOCfinal_valid_sf_inside$ln_suite <- replace(LOCfinal_valid_sf_inside$ln_dorm, is.infinite(LOCfinal_valid_sf_inside$ln_suite), 0)
+
+hedonic_inside <- lm(ln_valorm2 ~ ln_area +apart + ln_dorm + ln_suite + ln_andar + ln_vaga + ln_banho + latitude +longitude +ln_dist, data = LOCfinal_valid_sf_inside)
+
+# Verificar os resultados da regressão
+summary(hedonic_inside)
+
+# Fazer previsões com o modelo
+LOCfinal_valid_sf_inside$predicted_valorm2 <- predict(hedonic_inside, newdata = LOCfinal_valid_sf_inside)
+
+#Descritivas
+summary(LOCfinal_valid_sf_inside[c("predicted_valorm2","ln_valorm2","dormitorios","suites","vagas","banheiros")])
+
+# Comparar preços reais com preços previstos
+ggplot(data = LOCfinal_valid_sf_inside, aes(x = ln_valorm2, y = predicted_valorm2)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, color = "red") +
+  labs(title = "Comparação entre Preços Reais e Previstos",
+       x = "Log Preço Real (valorm2)",
+       y = "Log Preço Previsto")
+
+#teste de significância do modelo
+resultado_anova <- anova(hedonic_inside)
+print(resultado_anova)
+
+#teste de multicolinearidade (VIF), apresenta alguma multicolinearidade 
+library(usdm)
+library(car)
+vif_result <- vif(hedonic_inside)
+print(vif_result)
+
+#Teste de autocorrelação dos resíduos (Durbin-Watson), com autocorrelação positiva
+library(lmtest)
+teste_durbin_watson <- dwtest(hedonic_inside)
+print(teste_durbin_watson)
+
+#plotando um mapa com os valores outliers de valorm2_r > 100
+LOCfinal_valid_sf_inside_filter <- LOCfinal_valid_sf_inside %>% filter(LOCfinal_valid_sf_inside$valorm2_r>100)
+summary(LOCfinal_valid_sf_inside_filter$valorm2_r)
+
+map2 <- leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data = diadema, color = "red", weight = 2, smoothFactor = 0.5,
+              opacity = 1.0, fillOpacity = 0,
+              highlightOptions = highlightOptions(color = "white", weight = 2,bringToFront = FALSE)) %>%
+  addCircleMarkers(data = LOCfinal_valid_sf_inside_filter, label = sprintf("%.2f", LOCfinal_valid_sf_inside_filter$valorm2_r),
+                   color = ~pal(valorm2_r), radius = 2, stroke = FALSE, fillOpacity = 0.8) %>% 
+  addLegend(position = "bottomright", pal = pal, values = LOCfinal_valid_sf_inside_filter$valorm2_r,title = "Valor do aluguel por m2", opacity = 0.8)
+map2
+
+# Estimar modelo de aluguel social
+# Criar as características desejadas
+LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>% 
+  mutate(area_s = log(50),
+         dorm2 = log(2),
+         suite0 = 0,
+         vaga1 = log(1),
+         banho1 = log(1))
+
+# Acessar diretamente os coeficientes estimados do modelo 'hedonic_inside'
+coeficientes <- coef(hedonic_inside)
+
+
+# Calcular o valor de 'valorsocial_est' com base nos coeficientes e nas características criadas
+LOCfinal_valid_sf_inside$lnvalorsocial_est <- coeficientes[1] +
+  coeficientes[2] * LOCfinal_valid_sf_inside$area_s +
+  coeficientes[3] * LOCfinal_valid_sf_inside$apart +
+  coeficientes[4] * LOCfinal_valid_sf_inside$dorm2 +
+  coeficientes[5] * LOCfinal_valid_sf_inside$suite0 +
+  coeficientes[6] * LOCfinal_valid_sf_inside$ln_andar
+  coeficientes[7] * LOCfinal_valid_sf_inside$vaga1 +
+  coeficientes[8] * LOCfinal_valid_sf_inside$banho1
+  coeficientes[9] * LOCfinal_valid_sf_inside$latitude
+  coeficientes[10] * LOCfinal_valid_sf_inside$longitude
+  coeficientes[11] * LOCfinal_valid_sf_inside$ln_dist
+
+summary(LOCfinal_valid_sf_inside$lnvalorsocial_est)
+
+#mapa com valores do aluguel social
+pal <- colorNumeric(c("lightgreen", "darkblue"), 
+                    domain = LOCfinal_valid_sf_inside$lnvalorsocial_est, 
+                    na.color = "gray")
+
+map3 <- leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data = diadema, color = "red", weight = 2, smoothFactor = 0.5,
+              opacity = 1.0, fillOpacity = 0,
+              highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = FALSE)) %>%
+  addCircleMarkers(data = LOCfinal_valid_sf_inside, 
+                   label = sprintf("%.2f", LOCfinal_valid_sf_inside$lnvalorsocial_est),
+                   color = ~pal(lnvalorsocial_est), 
+                   radius = 2, 
+                   stroke = FALSE, 
+                   fillOpacity = 0.8) %>% 
+  addLegend(position = "bottomright", 
+            pal = pal, 
+            values = LOCfinal_valid_sf_inside$lnvalorsocial_est,
+            title = "Valor do aluguel social por m2", 
+            opacity = 0.8)
+map3
 
