@@ -358,22 +358,13 @@ LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
 names(LOCfinal_valid_sf_inside)
 
 #incluir variável latitude e longitude
-coordinates <- st_coordinates(LOCfinal_valid_sf_inside_filter)
+coordinates <- st_coordinates(LOCfinal_valid_sf_inside)
 
-LOCfinal_valid_sf_inside_filter$latitude <- coordinates[, "Y"]
-LOCfinal_valid_sf_inside_filter$longitude <- coordinates[, "X"]
-
-crs(centro_diadema_sf)
-crs(LOCfinal_valid_sf_inside_filter)
-
-
-st_crs(LOCfinal_valid_sample_sf)
-LOCfinal_valid_sample_sf <- st_set_crs(LOCfinal_valid_sample_sf, 4674)
-st_crs(LOCfinal_valid_sample_sf)
-st_crs(diadema_buffer)
+LOCfinal_valid_sf_inside$latitude <- coordinates[, "Y"]
+LOCfinal_valid_sf_inside$longitude <- coordinates[, "X"]
+names(LOCfinal_valid_sf_inside)
 
 #vizualizar esta amostra no mapa
-names(LOCfinal_valid_sf_inside)
 plot(LOCfinal_valid_sf_inside[41])
 summary(LOCfinal_valid_sf_inside[41])
 hist(LOCfinal_valid_sf_inside$precom2_r)
