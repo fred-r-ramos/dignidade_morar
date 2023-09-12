@@ -376,13 +376,14 @@ LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
   mutate(dist_center = st_distance(LOCfinal_valid_sf_inside, centro_diadema_sf))
 names(LOCfinal_valid_sf_inside)
 
-#incluir variável latitude e longitude
-coordinates <- st_coordinates(LOCfinal_valid_sf_inside)
+#incluir variável latitude e longitude em coordenadas planas UTM 23s
 
+LOCfinal_valid_sf_inside <- st_transform(LOCfinal_valid_sf_inside, crs = 31983)
+coordinates <- st_coordinates(LOCfinal_valid_sf_inside)
 LOCfinal_valid_sf_inside$latitude <- coordinates[, "Y"]
 LOCfinal_valid_sf_inside$longitude <- coordinates[, "X"]
 names(LOCfinal_valid_sf_inside)
-
+LOCfinal_valid_sf_inside <- st_transform(LOCfinal_valid_sf_inside, crs = 4674)
 
 #vizualizar esta amostra no mapa
 plot(LOCfinal_valid_sf_inside[41])
@@ -398,7 +399,7 @@ LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
 
 #com novas variáveis
 names(LOCfinal_valid_sf_inside)
-hedonic_inside <- lm(valorm2 ~ area_util + +apart + dormitorios + suites + andar + vagas + banheiros + latitude +longitude +distancia, data = LOCfinal_valid_sf_inside)
+hedonic_inside <- lm(valorm2 ~ area_util + +apart + dormitorios + suites + andar + vagas + banheiros + latitude +longitude +dist_center, data = LOCfinal_valid_sf_inside)
 
 # Verificar os resultados da regressão
 summary(hedonic_inside)
