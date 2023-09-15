@@ -356,16 +356,12 @@ LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
 names(LOCfinal_valid_sf_inside)
 
 #incluir variável latitude e longitude em coordenadas planas UTM 23s
-
 LOCfinal_valid_sf_inside <- st_transform(LOCfinal_valid_sf_inside, crs = 31983)
 coordinates <- st_coordinates(LOCfinal_valid_sf_inside)
 LOCfinal_valid_sf_inside$latitude <- coordinates[, "Y"]
 LOCfinal_valid_sf_inside$longitude <- coordinates[, "X"]
 names(LOCfinal_valid_sf_inside)
-<<<<<<< HEAD
-=======
 LOCfinal_valid_sf_inside <- st_transform(LOCfinal_valid_sf_inside, crs = 4674)
->>>>>>> afe34f8bf40f49996612596bc6354e87ad94f7a3
 
 #vizualizar esta amostra no mapa
 plot(LOCfinal_valid_sf_inside[41])
@@ -379,11 +375,7 @@ LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
   mutate(apart = case_when(tipo_imovel == "APARTAMENTO" ~ 1, TRUE ~ 0))
 
 names(LOCfinal_valid_sf_inside)
-<<<<<<< HEAD
 hedonic_inside <- lm(valorm2 ~ area_util  +apart + dormitorios + suites + andar + vagas + banheiros + latitude +longitude +dist_center, data = LOCfinal_valid_sf_inside)
-=======
-hedonic_inside <- lm(valorm2 ~ area_util + +apart + dormitorios + suites + andar + vagas + banheiros + latitude +longitude +dist_center, data = LOCfinal_valid_sf_inside)
->>>>>>> afe34f8bf40f49996612596bc6354e87ad94f7a3
 
 # Verificar os resultados da regressão
 summary(hedonic_inside)
@@ -449,12 +441,12 @@ LOCfinal_valid_sf_inside$valorsocial_est <- coeficientes[1] +
   coeficientes[3] * LOCfinal_valid_sf_inside$apart +
   coeficientes[4] * LOCfinal_valid_sf_inside$dorm2 +
   coeficientes[5] * LOCfinal_valid_sf_inside$suite0 +
-  coeficientes[6] * LOCfinal_valid_sf_inside$andar
+  coeficientes[6] * LOCfinal_valid_sf_inside$andar +
   coeficientes[7] * LOCfinal_valid_sf_inside$vaga1 +
-  coeficientes[8] * LOCfinal_valid_sf_inside$banho1
-  coeficientes[9] * LOCfinal_valid_sf_inside$latitude
-  coeficientes[10] * LOCfinal_valid_sf_inside$longitude
-  coeficientes[11] * LOCfinal_valid_sf_inside$dist
+  coeficientes[8] * LOCfinal_valid_sf_inside$banho1 +
+  coeficientes[9] * LOCfinal_valid_sf_inside$latitude +
+  coeficientes[10] * LOCfinal_valid_sf_inside$longitude +
+  coeficientes[11] * LOCfinal_valid_sf_inside$dist_center
 
 summary(LOCfinal_valid_sf_inside$valorsocial_est)
 
@@ -482,6 +474,14 @@ map3 <- leaflet() %>%
 map3
 
 #MODELO EM LOG
+#Estimar valor hedônico para amostras dentro do buffer
+# Converter dist_center em 'numeric'
+LOCfinal_valid_sf_inside$distcenter <- as.numeric(LOCfinal_valid_sf_inside$dist_center)
+LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
+  mutate(apart = case_when(tipo_imovel == "APARTAMENTO" ~ 1, TRUE ~ 0))
+
+names(LOCfinal_valid_sf_inside)
+
 #gerar logaritmos
 LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
   mutate(ln_valorm2 = log(valorm2_r),
@@ -528,6 +528,25 @@ ggplot(data = LOCfinal_valid_sf_inside, aes(x = ln_valorm2, y = predicted_valorm
        x = "Log Preço Real (valorm2)",
        y = "Log Preço Previsto")
 
+#Índice de Moran
+library(spdep)
+library(lmtest)
+residuos <- residuals(hedonic_inside)
+# Suponha que seus dados tenham informações de latitude e longitude em colunas chamadas "latitude" e "longitude"
+coords <- cbind(LOCfinal_valid_sf_inside$latitude, LOCfinal_valid_sf_inside$longitude)
+# Crie a matriz de vizinhança
+matriz_pesos <- dnearneigh(coords, d1 = 0, d2 = 300)  # Ajuste a distância conforme necessário
+# Converta a matriz de pesos em um objeto listw
+matriz_pesos_listw <- nb2listw(matriz_pesos)
+moran_result <- moran.test(residuos, matriz_pesos_listw)
+moran_result$statistic
+moran_result$p.value
+
+#Teste Multiplicador de Lagrange
+lm_test <- lm.LMtests(residuos, matriz_pesos_listw, zero.policy = TRUE)
+#Teste de Robustez Lagrange Multiplier (RLM)
+rlm_test <- RLMtests(residuos, matriz_pesos_listw, zero.policy = TRUE)
+
 #teste de significância do modelo
 resultado_anova <- anova(hedonic_inside)
 print(resultado_anova)
@@ -543,6 +562,9 @@ library(lmtest)
 teste_durbin_watson <- dwtest(hedonic_inside)
 print(teste_durbin_watson)
 
+
+
+
 #plotando um mapa com os valores outliers de valorm2_r > 100
 LOCfinal_valid_sf_inside_filter <- LOCfinal_valid_sf_inside %>% filter(LOCfinal_valid_sf_inside$valorm2_r>100)
 summary(LOCfinal_valid_sf_inside_filter$valorm2_r)
@@ -557,7 +579,7 @@ map2 <- leaflet() %>%
   addLegend(position = "bottomright", pal = pal, values = LOCfinal_valid_sf_inside_filter$valorm2_r,title = "Valor do aluguel por m2", opacity = 0.8)
 map2
 
-# Estimar modelo de aluguel social
+# Estimar modelo de aluguel social em log
 # Criar as características desejadas
 LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>% 
   mutate(area_s = log(50),
@@ -569,7 +591,6 @@ LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
 # Acessar diretamente os coeficientes estimados do modelo 'hedonic_inside'
 coeficientes <- coef(hedonic_inside)
 
-
 # Calcular o valor de 'valorsocial_est' com base nos coeficientes e nas características criadas
 LOCfinal_valid_sf_inside$lnvalorsocial_est <- coeficientes[1] +
   coeficientes[2] * LOCfinal_valid_sf_inside$area_s +
@@ -578,12 +599,17 @@ LOCfinal_valid_sf_inside$lnvalorsocial_est <- coeficientes[1] +
   coeficientes[5] * LOCfinal_valid_sf_inside$suite0 +
   coeficientes[6] * LOCfinal_valid_sf_inside$ln_andar
   coeficientes[7] * LOCfinal_valid_sf_inside$vaga1 +
-  coeficientes[8] * LOCfinal_valid_sf_inside$banho1
-  coeficientes[9] * LOCfinal_valid_sf_inside$latitude
-  coeficientes[10] * LOCfinal_valid_sf_inside$longitude
+  coeficientes[8] * LOCfinal_valid_sf_inside$banho1 +
+  coeficientes[9] * LOCfinal_valid_sf_inside$latitude +
+  coeficientes[10] * LOCfinal_valid_sf_inside$longitude +
   coeficientes[11] * LOCfinal_valid_sf_inside$ln_dist
 
 summary(LOCfinal_valid_sf_inside$lnvalorsocial_est)
+LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>% 
+  mutate(valorsocial_estlg = exp(lnvalorsocial_est))
+summary(LOCfinal_valid_sf_inside$valorsocial_estlg)
+
+
 
 #mapa com valores do aluguel social
 pal <- colorNumeric(c("lightgreen", "darkblue"), 
@@ -596,14 +622,14 @@ map3 <- leaflet() %>%
               opacity = 1.0, fillOpacity = 0,
               highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = FALSE)) %>%
   addCircleMarkers(data = LOCfinal_valid_sf_inside, 
-                   label = sprintf("%.2f", LOCfinal_valid_sf_inside$lnvalorsocial_est),
-                   color = ~pal(lnvalorsocial_est), 
+                   label = sprintf("%.2f", LOCfinal_valid_sf_inside$valorsocial_estlg),
+                   color = ~pal(valorsocial_estlg), 
                    radius = 2, 
                    stroke = FALSE, 
                    fillOpacity = 0.8) %>% 
   addLegend(position = "bottomright", 
             pal = pal, 
-            values = LOCfinal_valid_sf_inside$lnvalorsocial_est,
+            values = LOCfinal_valid_sf_inside$valorsocial_estlg,
             title = "Valor do aluguel social por m2", 
             opacity = 0.8)
 map3
