@@ -535,9 +535,7 @@ library(lmtest)
 residuos <- residuals(hedonic_inside)
 # Suponha que seus dados tenham informações de latitude e longitude em colunas chamadas "latitude" e "longitude"
 coords <- cbind(LOCfinal_valid_sf_inside$latitude, LOCfinal_valid_sf_inside$longitude)
-
 # Crie a matriz de vizinhança
-
 #matriz_pesos <- dnearneigh(coords, d1 = 0, d2 = 400)  # Ajuste a distância conforme necessário
 # Converta a matriz de pesos em um objeto listw
 #matriz_pesos_listw <- nb2listw(matriz_pesos)
@@ -591,50 +589,6 @@ LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
 summary(LOCfinal_valid_sf_inside$valorsocial_estlg)
 summary(LOCfinal_valid_sf_inside[c("valorsocial_est","valorsocial_estlg","predicted_valorm2","ln_valorm2","dormitorios","suites","vagas","banheiros")])
 
-# Com faixa de valores
-# Defina o número de valores aleatórios que você deseja gerar
-n <- nrow(LOCfinal_valid_sf_inside)  # Gere um valor para cada linha na base de dados
-
-# Gere n valores aleatórios entre 42 e 50
-area_s <- runif(n, min = 40, max = 50)
-dorm_s <- sample(0:2, n,replace = TRUE)
-vaga_s <- sample(0:1, n,replace = TRUE)
-
-# Adicione os valores gerados como uma nova coluna na base de dados
-LOCfinal_valid_sf_inside$area_s <- log(area_s)
-LOCfinal_valid_sf_inside$dorm_s <- log(dorm_s)
-LOCfinal_valid_sf_inside$vaga_s <- log(vaga_s)
-
-any(is.infinite(LOCfinal_valid_sf_inside$area_s))
-any(is.infinite(LOCfinal_valid_sf_inside$dorm_s))
-any(is.infinite(LOCfinal_valid_sf_inside$vaga_s))
-
-LOCfinal_valid_sf_inside$dorm_s <- replace(LOCfinal_valid_sf_inside$dorm_s, is.infinite(LOCfinal_valid_sf_inside$dorm_s), 0)
-LOCfinal_valid_sf_inside$vaga_s <- replace(LOCfinal_valid_sf_inside$vaga_s, is.infinite(LOCfinal_valid_sf_inside$vaga_s), 0)
-
-# Acessar diretamente os coeficientes estimados do modelo 'hedonic_inside'
-coeficientes <- coef(hedonic_inside)
-
-# Calcular o valor de 'valorsocial_est' com base nos coeficientes e nas características criadas
-LOCfinal_valid_sf_inside$lnvalorsocial_est <- coeficientes[1] +
-  coeficientes[2] * LOCfinal_valid_sf_inside$area_s +
-  coeficientes[3] * LOCfinal_valid_sf_inside$apart +
-  coeficientes[4] * LOCfinal_valid_sf_inside$dorm_s +
-  coeficientes[5] * LOCfinal_valid_sf_inside$suite0 +
-  coeficientes[6] * LOCfinal_valid_sf_inside$ln_andar+
-  coeficientes[7] * LOCfinal_valid_sf_inside$vaga_s +
-  coeficientes[8] * LOCfinal_valid_sf_inside$banho1 +
-  coeficientes[9] * LOCfinal_valid_sf_inside$latitude +
-  coeficientes[10] * LOCfinal_valid_sf_inside$longitude +
-  coeficientes[11] * LOCfinal_valid_sf_inside$ln_dist
-
-summary(LOCfinal_valid_sf_inside$lnvalorsocial_est)
-LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>% 
-  mutate(valorsocial_estlg = exp(lnvalorsocial_est))
-summary(LOCfinal_valid_sf_inside$valorsocial_estlg)
-summary(LOCfinal_valid_sf_inside[c("valorsocial_est","valorsocial_estlg","predicted_valorm2","ln_valorm2","dormitorios","suites","vagas","banheiros")])
-
-
 #mapa com valores do aluguel social
 pal <- colorNumeric(c("lightgreen", "darkblue"), 
                     domain = LOCfinal_valid_sf_inside$valorsocial_estlg, 
@@ -657,4 +611,49 @@ map3a <- leaflet() %>%
             title = "Valor do aluguel social por m2", 
             opacity = 0.8)
 map3a
+
+
+# Com faixa de valores
+# Defina o número de valores aleatórios que você deseja gerar
+#n <- nrow(LOCfinal_valid_sf_inside)  # Gere um valor para cada linha na base de dados
+
+# Gere n valores aleatórios entre 42 e 50
+#area_s <- runif(n, min = 40, max = 50)
+#dorm_s <- sample(0:2, n,replace = TRUE)
+#vaga_s <- sample(0:1, n,replace = TRUE)
+
+# Adicione os valores gerados como uma nova coluna na base de dados
+#LOCfinal_valid_sf_inside$area_s <- log(area_s)
+#LOCfinal_valid_sf_inside$dorm_s <- log(dorm_s)
+#LOCfinal_valid_sf_inside$vaga_s <- log(vaga_s)
+
+#any(is.infinite(LOCfinal_valid_sf_inside$area_s))
+#any(is.infinite(LOCfinal_valid_sf_inside$dorm_s))
+#any(is.infinite(LOCfinal_valid_sf_inside$vaga_s))
+
+#LOCfinal_valid_sf_inside$dorm_s <- replace(LOCfinal_valid_sf_inside$dorm_s, is.infinite(LOCfinal_valid_sf_inside$dorm_s), 0)
+#LOCfinal_valid_sf_inside$vaga_s <- replace(LOCfinal_valid_sf_inside$vaga_s, is.infinite(LOCfinal_valid_sf_inside$vaga_s), 0)
+
+# Acessar diretamente os coeficientes estimados do modelo 'hedonic_inside'
+#coeficientes <- coef(hedonic_inside)
+
+# Calcular o valor de 'valorsocial_est' com base nos coeficientes e nas características criadas
+#LOCfinal_valid_sf_inside$lnvalorsocial_est <- coeficientes[1] +
+#  coeficientes[2] * LOCfinal_valid_sf_inside$area_s +
+#  coeficientes[3] * LOCfinal_valid_sf_inside$apart +
+#  coeficientes[4] * LOCfinal_valid_sf_inside$dorm_s +
+#  coeficientes[5] * LOCfinal_valid_sf_inside$suite0 +
+#  coeficientes[6] * LOCfinal_valid_sf_inside$ln_andar+
+#  coeficientes[7] * LOCfinal_valid_sf_inside$vaga_s +
+#  coeficientes[8] * LOCfinal_valid_sf_inside$banho1 +
+#  coeficientes[9] * LOCfinal_valid_sf_inside$latitude +
+#  coeficientes[10] * LOCfinal_valid_sf_inside$longitude +
+#  coeficientes[11] * LOCfinal_valid_sf_inside$ln_dist
+
+#summary(LOCfinal_valid_sf_inside$lnvalorsocial_est)
+#LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>% 
+#  mutate(valorsocial_estlg = exp(lnvalorsocial_est))
+#summary(LOCfinal_valid_sf_inside$valorsocial_estlg)
+#summary(LOCfinal_valid_sf_inside[c("valorsocial_est","valorsocial_estlg","predicted_valorm2","ln_valorm2","dormitorios","suites","vagas","banheiros")])
+
 
