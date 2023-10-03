@@ -533,6 +533,7 @@ ggplot(data = LOCfinal_valid_sf_inside, aes(x = ln_valorm2, y = predicted_valorm
 library(spdep)
 library(lmtest)
 residuos <- residuals(hedonic_inside)
+hist(residuos)
 # Suponha que seus dados tenham informações de latitude e longitude em colunas chamadas "latitude" e "longitude"
 coords <- cbind(LOCfinal_valid_sf_inside$latitude, LOCfinal_valid_sf_inside$longitude)
 # Crie a matriz de vizinhança
@@ -612,10 +613,120 @@ map3a <- leaflet() %>%
             opacity = 0.8)
 map3a
 
+names(LOCfinal_valid_sf_inside)
 
-# Com faixa de valores
-# Defina o número de valores aleatórios que você deseja gerar
-#n <- nrow(LOCfinal_valid_sf_inside)  # Gere um valor para cada linha na base de dados
+## interpolação para construção das curvas de preço
+library(spData)
+library(sf)
+library(terra)
+library(tmap)
+library(viridis)
+library(raster)
+library(gstat)
+library(tgp)
+
+##criando uma base com as coordenadas e valores estimados
+LOCfinal_valid_sf_inside_kirg <- LOCfinal_valid_sf_inside %>% dplyr::select(geometry, valorsocial_estlg)
+## usando coordenadas planas 
+LOCfinal_valid_sf_inside_kirg_UTM <- st_transform(LOCfinal_valid_sf_inside_kirg, crs = 31983)
+coords <- st_coordinates(LOCfinal_valid_sf_inside_kirg_UTM)
+valorsocial_XY_UTM <- data.frame(
+  Longitude = coords[, 1],
+  Latitude = coords[, 2],
+  valorsocial_estlg = LOCfinal_valid_sf_inside_kirg_UTM$valorsocial_estlg
+)
+names(valorsocial_XY_UTM)
+valorsocial_XY_UTM <- valorsocial_XY_UTM %>% sample_frac(size = 0.3)
+
+
+# rodando um modelo de interpolacao baseado em Local Polynomial Regression Fitting
+valorsocial_XY_UTM_int <- interp.loess(valorsocial_XY_UTM$Longitude, valorsocial_XY_UTM$Latitude, valorsocial_XY_UTM$valorsocial_estlg, gridlen=c(100,100), span=0.6)
+contour(valorsocial_XY_UTM_int)
+class(valorsocial_XY_UTM_int)
+#criando um grid para inputar os valores estimados
+grid <- expand.grid(x = valorsocial_XY_UTM_int$x, y = valorsocial_XY_UTM_int$y)
+grid$z <- matrix(valorsocial_XY_UTM_int$z, nrow = 10000)
+grid_sf <- st_as_sf(grid, coords = c("x", "y"), crs = 31983)
+class(grid_sf)
+plot(grid_sf)
+st_crs(grid_sf) 
+names(grid_sf)
+raster_grid <- rast(ext(grid_sf), resolution =150)
+# criando uma base espacial tipo raster com os valores interpolados
+valorsocial_raster <- rasterize(grid_sf, raster_grid, field=grid_sf$z, fun = min, na.rm = TRUE)
+crs(valorsocial_raster)<-  "PROJCRS[\"SIRGAS 2000 / UTM zone 23S\",\n    BASEGEOGCRS[\"SIRGAS 2000\",\n        DATUM[\"Sistema de Referencia Geocentrico para las AmericaS 2000\",\n            ELLIPSOID[\"GRS 1980\",6378137,298.257222101,\n                LENGTHUNIT[\"metre\",1]]],\n        PRIMEM[\"Greenwich\",0,\n            ANGLEUNIT[\"degree\",0.0174532925199433]],\n        ID[\"EPSG\",4674]],\n    CONVERSION[\"UTM zone 23S\",\n        METHOD[\"Transverse Mercator\",\n            ID[\"EPSG\",9807]],\n        PARAMETER[\"Latitude of natural origin\",0,\n            ANGLEUNIT[\"degree\",0.0174532925199433],\n            ID[\"EPSG\",8801]],\n        PARAMETER[\"Longitude of natural origin\",-45,\n            ANGLEUNIT[\"degree\",0.0174532925199433],\n            ID[\"EPSG\",8802]],\n        PARAMETER[\"Scale factor at natural origin\",0.9996,\n            SCALEUNIT[\"unity\",1],\n            ID[\"EPSG\",8805]],\n        PARAMETER[\"False easting\",500000,\n            LENGTHUNIT[\"metre\",1],\n            ID[\"EPSG\",8806]],\n        PARAMETER[\"False northing\",10000000,\n            LENGTHUNIT[\"metre\",1],\n            ID[\"EPSG\",8807]]],\n    CS[Cartesian,2],\n        AXIS[\"(E)\",east,\n            ORDER[1],\n            LENGTHUNIT[\"metre\",1]],\n        AXIS[\"(N)\",north,\n            ORDER[2],\n            LENGTHUNIT[\"metre\",1]],\n    USAGE[\n        SCOPE[\"Engineering survey, topographic mapping.\"],\n        AREA[\"Brazil - between 48°W and 42°W, northern and southern hemispheres, onshore and offshore.\"],\n        BBOX[-33.5,-48,5.13,-42]],\n    ID[\"EPSG\",31983]]"
+diadema_utm <- st_transform(diadema,31983)
+#recortar o raster sobreopondo as fornateiras de Diadema
+valorsocial_raster_cropped = crop(valorsocial_raster, diadema_utm)
+plot(valorsocial_raster_cropped)
+valorsocial_raster_masked = mask(valorsocial_raster_cropped, diadema_utm)
+plot(valorsocial_raster_masked)
+#calculando as curvas de preço
+curvas_preco = as.contour(valorsocial_raster_masked) 
+plot(valorsocial_raster_masked, axes = FALSE)
+plot(valorsocial_raster_masked, add = TRUE)
+plot(curvas_preco,add=TRUE)
+class(curvas_preco)
+plot(curvas_preco,add=TRUE)
+#transformando as curvas em vetor simplefeature
+curvas_preco_sf <- sf::st_as_sf(curvas_preco)
+ggplot() + geom_sf(data = curvas_preco_sf) +geom_sf_label(data = curvas_preco_sf, aes(label = level), size = 2) +geom_sf(data=diadema_utm,alpha = 0.2)+ theme_bw()
+
+
+
+# rodando um modelo de interpolacao baseado em Inverse Distance Weighting (IDW) Interpolation
+tmap_mode("plot")
+map <- st_union(diadema_buffer) %>% st_sf()
+tm_shape(map) + tm_polygons(alpha = 0.3) + tm_shape(LOCfinal_valid_sf_inside_kirg) +
+  tm_dots("valorsocial_estlg", palette = "viridis")
+
+###rodando a interpolacao
+res <- gstat(formula = valorsocial_estlg ~ 1, locations = LOCfinal_valid_sf_inside_kirg_UTM,
+             nmax = nrow(LOCfinal_valid_sf_inside_kirg_UTM), # use all the neighbors locations
+             set = list(idp = 1)) # beta = 1 
+
+
+resp <- predict(res, grid_sf)
+resp$x <- st_coordinates(resp)[,1]
+resp$y <- st_coordinates(resp)[,2]
+resp$pred <- resp$var1.pred
+ggplot() + geom_sf(data = resp, aes(color = pred)) +
+  scale_color_viridis(name = "pred") + theme_bw()
+class(resp)
+valorsocial_raster1 <- rasterize(resp, raster_grid, field=resp$pred, fun = min, na.rm = TRUE)
+resp_raster_cropped <- crop(valorsocial_raster1, diadema_utm)
+resp_raster_masked = mask(resp_raster_cropped, diadema_utm)
+plot(resp_raster_masked)
+#calculando as curvas de preço
+curvas_preco1 = as.contour(resp_raster_masked) 
+plot(resp_raster_masked, axes = FALSE)
+plot(resp_raster_masked, add = TRUE)
+plot(curvas_preco1,add=TRUE)
+class(curvas_preco1)
+#transformando as curvas em vetor simplefeature
+curvas_preco1_sf <- sf::st_as_sf(curvas_preco1)
+class(curvas_preco1_sf)
+st_crs(curvas_preco1_sf) <- st_crs(31983)
+ggplot() + geom_sf(data = curvas_preco1_sf) +geom_sf_label(data = curvas_preco1_sf, aes(label = level), size = 2) +geom_sf(data=diadema_utm,alpha = 0.2)+ theme_bw()
+
+
+
+# rodando um modelo de interpolacao baseado em Kriging
+LOCfinal_valid_sf_inside_kirg_UTM_s <- LOCfinal_valid_sf_inside_kirg_UTM %>% sample_frac(size = 0.3)
+variogram_model <- variogram(valorsocial_estlg ~ 1, LOCfinal_valid_sf_inside_kirg_UTM_s)
+plot(variogram_model)
+fitted_variogram <- fit.variogram(variogram_model, vgm("Exc"))
+print(fitted_variogram)
+plot(variogram_model, model = fitted_variogram)
+
+####a interpolacao por krige esta tomando muito tempo
+# #kriged <- krige(valorsocial_estlg ~ 1, LOCfinal_valid_sf_inside_kirg_UTM_s, , model = fitted_variogram,nmax=5)
+# class(kriged)
+# plot(kriged)
+
+
+
+
 
 # Gere n valores aleatórios entre 42 e 50
 #area_s <- runif(n, min = 40, max = 50)
@@ -655,5 +766,6 @@ map3a
 #  mutate(valorsocial_estlg = exp(lnvalorsocial_est))
 #summary(LOCfinal_valid_sf_inside$valorsocial_estlg)
 #summary(LOCfinal_valid_sf_inside[c("valorsocial_est","valorsocial_estlg","predicted_valorm2","ln_valorm2","dormitorios","suites","vagas","banheiros")])
+
 
 
