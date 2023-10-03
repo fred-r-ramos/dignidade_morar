@@ -205,14 +205,16 @@ LOCpciadbv_valid<- LOCpciadb_valid %>% filter(vagas<8 |is.na (vagas ))
 #Filtros cruzados de area_util e vagas
 LOC_areavagas<- LOCpciadbv_valid %>% filter(area_util_num>300 & vagas>8)
 LOC_dormvagas<- LOCpciadbv_valid %>% filter(dormitorios_num< 1 & vagas>5)
-LOC_dormbanheiro<- LOCpciadbv_valid %>% filter(dormitorios_num< 1 & banheiros>4)
+LOC_dormbanheiro<- LOCpciadbv_valid %>% filter(dormitorios_num< 2 & banheiros>5)
+LOC_areadorm<- LOCpciadbv_valid %>% filter(dormitorios_num> 4 & area_util_num <50)
 
-LOCpciadbv_valid <- LOCpciadbv_valid%>% mutate (limp_1 = dormitorios_num< 1 & banheiros>4)
+LOCpciadbv_valid <- LOCpciadbv_valid%>% mutate (limp_1 = dormitorios_num< 2 & banheiros>5)
 LOCpciadbv_valid <- LOCpciadbv_valid%>% mutate (limp_2 = dormitorios_num< 1 & vagas>5)
+LOCpciadbv_valid <- LOCpciadbv_valid%>% mutate (limp_3 = dormitorios_num> 4 & area_util_num<50)
 
-LOCfinal_valid <- LOCpciadbv_valid%>% filter (limp_1!="TRUE" & limp_2!="TRUE")
+LOCfinal_valid <- LOCpciadbv_valid%>% filter (limp_1!="TRUE" & limp_2!="TRUE" &  limp_3!="TRUE")
 count(LOCfinal_valid)
-LOCfinal_valid <-LOCfinal_valid %>% select(-limp_1 & -limp_2)
+LOCfinal_valid <-LOCfinal_valid %>% select(-limp_1 & -limp_2 & -limp_3)
 
 #Locacao por tipo e ano
 LOCACAO_anotipo <- LOCfinal_valid %>% group_by(tipo_imovel, Ano) %>% 
@@ -508,7 +510,7 @@ LOCfinal_valid_sf_inside$ln_vaga <- replace(LOCfinal_valid_sf_inside$ln_vaga, is
 LOCfinal_valid_sf_inside$ln_dorm <- replace(LOCfinal_valid_sf_inside$ln_dorm, is.infinite(LOCfinal_valid_sf_inside$ln_dorm), 0)
 LOCfinal_valid_sf_inside$ln_andar <- replace(LOCfinal_valid_sf_inside$ln_andar, is.infinite(LOCfinal_valid_sf_inside$ln_andar), 0)
 LOCfinal_valid_sf_inside$ln_dorm <- replace(LOCfinal_valid_sf_inside$ln_dorm, is.infinite(LOCfinal_valid_sf_inside$ln_dorm), 0)
-LOCfinal_valid_sf_inside$ln_suite <- replace(LOCfinal_valid_sf_inside$ln_dorm, is.infinite(LOCfinal_valid_sf_inside$ln_suite), 0)
+LOCfinal_valid_sf_inside$ln_suite <- replace(LOCfinal_valid_sf_inside$ln_suite, is.infinite(LOCfinal_valid_sf_inside$ln_suite), 0)
 
 hedonic_inside <- lm(ln_valorm2 ~ ln_area +apart + ln_dorm + ln_suite + ln_andar + ln_vaga + ln_banho + latitude +longitude +ln_dist, data = LOCfinal_valid_sf_inside)
 
@@ -525,13 +527,14 @@ summary(LOCfinal_valid_sf_inside[c("predicted_valorm2","ln_valorm2","dormitorios
 ggplot(data = LOCfinal_valid_sf_inside, aes(x = ln_valorm2, y = predicted_valorm2)) +
   geom_point() +
   geom_abline(intercept = 0, slope = 1, color = "red") +
-  labs(title = "Comparação entre Preços Reais e Previstos",
-       x = "Log Preço Real (valorm2)",
-       y = "Log Preço Previsto")
+  labs(title = "Comparação entre Valores Reais e Previstos",
+       x = "Log Valor Real (valor/m2)",
+       y = "Log Valor Previsto")
 
 #Índice de Moran
 library(spdep)
 library(lmtest)
+<<<<<<< HEAD
 residuos <- residuals(hedonic_inside)
 hist(residuos)
 # Suponha que seus dados tenham informações de latitude e longitude em colunas chamadas "latitude" e "longitude"
@@ -543,6 +546,15 @@ coords <- cbind(LOCfinal_valid_sf_inside$latitude, LOCfinal_valid_sf_inside$long
 #moran_result <- moran.test(residuos, matriz_pesos_listw)
 #moran_result$statistic
 #moran_result$p.value
+=======
+library(spdep)
+library(deldir)
+
+#limpar memória
+#rm(list = ls())
+gc()
+
+>>>>>>> f1b70d9151ef9533437371c1aca67fa186d2a7d7
 
 #teste de significância do modelo
 resultado_anova <- anova(hedonic_inside)
@@ -555,7 +567,6 @@ vif_result <- vif(hedonic_inside)
 print(vif_result)
 
 #Teste de autocorrelação dos resíduos (Durbin-Watson), com autocorrelação positiva
-library(lmtest)
 teste_durbin_watson <- dwtest(hedonic_inside)
 print(teste_durbin_watson)
 
@@ -589,6 +600,24 @@ LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
   mutate(valorsocial_estlg = exp(lnvalorsocial_est))
 summary(LOCfinal_valid_sf_inside$valorsocial_estlg)
 summary(LOCfinal_valid_sf_inside[c("valorsocial_est","valorsocial_estlg","predicted_valorm2","ln_valorm2","dormitorios","suites","vagas","banheiros")])
+column_vector <- LOCfinal_valid_sf_inside[["valorsocial_estlg"]]
+quantiles <- quantile(column_vector, probs = c(0,0.25, 0.5, 0.75,1))
+print(quantiles)
+quartile_groups <- cut(column_vector, breaks = quantiles, labels = FALSE)
+quartile_counts <- table(quartile_groups)
+print(quartile_counts)
+
+
+#descritiva somente de Diadema
+diadema_data <- LOCfinal_valid_sf_inside[LOCfinal_valid_sf_inside$shp_municipio == "Diadema", ]
+column_vector <- diadema_data[["valorsocial_estlg"]]
+quantiles <- quantile(column_vector, probs = c(0,0.25, 0.5, 0.75,1))
+print(quantiles)
+quartile_groups <- cut(column_vector, breaks = quantiles, labels = FALSE)
+quartile_counts <- table(quartile_groups)
+print(quartile_counts)
+
+
 
 #mapa com valores do aluguel social
 pal <- colorNumeric(c("lightgreen", "darkblue"), 
@@ -609,10 +638,13 @@ map3a <- leaflet() %>%
   addLegend(position = "bottomright", 
             pal = pal, 
             values = LOCfinal_valid_sf_inside$valorsocial_estlg,
-            title = "Valor do aluguel social por m2", 
+            title = "Valor do aluguel 
+            social por m2", 
             opacity = 0.8)
+
 map3a
 
+<<<<<<< HEAD
 names(LOCfinal_valid_sf_inside)
 
 ## interpolação para construção das curvas de preço
@@ -723,6 +755,38 @@ plot(variogram_model, model = fitted_variogram)
 # #kriged <- krige(valorsocial_estlg ~ 1, LOCfinal_valid_sf_inside_kirg_UTM_s, , model = fitted_variogram,nmax=5)
 # class(kriged)
 # plot(kriged)
+=======
+#Filtro de imóveis com <50m2
+LOCfinal_valid_sf_inside_50 <- LOCfinal_valid_sf_inside[LOCfinal_valid_sf_inside$area_util<50,]
+summary(LOCfinal_valid_sf_inside_50[c("valorm2","dormitorios","suites","vagas","banheiros")])
+#mapa
+pal <- colorNumeric(c("lightgreen", "darkblue"), 
+                    domain = LOCfinal_valid_sf_inside_50$valorm2, 
+                    na.color = "gray")
+
+map4 <- leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data = diadema, color = "red", weight = 2, smoothFactor = 0.5,
+              opacity = 1.0, fillOpacity = 0,
+              highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = FALSE)) %>%
+  addCircleMarkers(data = LOCfinal_valid_sf_inside_50, 
+                   label = sprintf("%.2f", LOCfinal_valid_sf_inside_50$valorm2),
+                   color = ~pal(valorm2), 
+                   radius = 2, 
+                   stroke = FALSE, 
+                   fillOpacity = 0.8) %>% 
+  addLegend(position = "bottomright", 
+            pal = pal, 
+            values = LOCfinal_valid_sf_inside_50$valorm2,
+            title = "Valor do aluguel 
+            social por m2", 
+            opacity = 0.8)
+
+map4
+
+
+
+>>>>>>> f1b70d9151ef9533437371c1aca67fa186d2a7d7
 
 
 
