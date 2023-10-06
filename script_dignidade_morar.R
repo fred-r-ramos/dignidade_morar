@@ -534,7 +534,7 @@ ggplot(data = LOCfinal_valid_sf_inside, aes(x = ln_valorm2, y = predicted_valorm
 #Índice de Moran
 library(spdep)
 library(lmtest)
-<<<<<<< HEAD
+
 residuos <- residuals(hedonic_inside)
 hist(residuos)
 # Suponha que seus dados tenham informações de latitude e longitude em colunas chamadas "latitude" e "longitude"
@@ -546,7 +546,7 @@ coords <- cbind(LOCfinal_valid_sf_inside$latitude, LOCfinal_valid_sf_inside$long
 #moran_result <- moran.test(residuos, matriz_pesos_listw)
 #moran_result$statistic
 #moran_result$p.value
-=======
+
 library(spdep)
 library(deldir)
 
@@ -554,7 +554,6 @@ library(deldir)
 #rm(list = ls())
 gc()
 
->>>>>>> f1b70d9151ef9533437371c1aca67fa186d2a7d7
 
 #teste de significância do modelo
 resultado_anova <- anova(hedonic_inside)
@@ -644,7 +643,7 @@ map3a <- leaflet() %>%
 
 map3a
 
-<<<<<<< HEAD
+
 names(LOCfinal_valid_sf_inside)
 
 ## interpolação para construção das curvas de preço
@@ -684,8 +683,11 @@ plot(grid_sf)
 st_crs(grid_sf) 
 names(grid_sf)
 raster_grid <- rast(ext(grid_sf), resolution =150)
+raster_grid
 # criando uma base espacial tipo raster com os valores interpolados
 valorsocial_raster <- rasterize(grid_sf, raster_grid, field=grid_sf$z, fun = min, na.rm = TRUE)
+valorsocial_raster
+plot(valorsocial_raster)
 crs(valorsocial_raster)<-  "PROJCRS[\"SIRGAS 2000 / UTM zone 23S\",\n    BASEGEOGCRS[\"SIRGAS 2000\",\n        DATUM[\"Sistema de Referencia Geocentrico para las AmericaS 2000\",\n            ELLIPSOID[\"GRS 1980\",6378137,298.257222101,\n                LENGTHUNIT[\"metre\",1]]],\n        PRIMEM[\"Greenwich\",0,\n            ANGLEUNIT[\"degree\",0.0174532925199433]],\n        ID[\"EPSG\",4674]],\n    CONVERSION[\"UTM zone 23S\",\n        METHOD[\"Transverse Mercator\",\n            ID[\"EPSG\",9807]],\n        PARAMETER[\"Latitude of natural origin\",0,\n            ANGLEUNIT[\"degree\",0.0174532925199433],\n            ID[\"EPSG\",8801]],\n        PARAMETER[\"Longitude of natural origin\",-45,\n            ANGLEUNIT[\"degree\",0.0174532925199433],\n            ID[\"EPSG\",8802]],\n        PARAMETER[\"Scale factor at natural origin\",0.9996,\n            SCALEUNIT[\"unity\",1],\n            ID[\"EPSG\",8805]],\n        PARAMETER[\"False easting\",500000,\n            LENGTHUNIT[\"metre\",1],\n            ID[\"EPSG\",8806]],\n        PARAMETER[\"False northing\",10000000,\n            LENGTHUNIT[\"metre\",1],\n            ID[\"EPSG\",8807]]],\n    CS[Cartesian,2],\n        AXIS[\"(E)\",east,\n            ORDER[1],\n            LENGTHUNIT[\"metre\",1]],\n        AXIS[\"(N)\",north,\n            ORDER[2],\n            LENGTHUNIT[\"metre\",1]],\n    USAGE[\n        SCOPE[\"Engineering survey, topographic mapping.\"],\n        AREA[\"Brazil - between 48°W and 42°W, northern and southern hemispheres, onshore and offshore.\"],\n        BBOX[-33.5,-48,5.13,-42]],\n    ID[\"EPSG\",31983]]"
 diadema_utm <- st_transform(diadema,31983)
 #recortar o raster sobreopondo as fornateiras de Diadema
@@ -741,8 +743,6 @@ class(curvas_preco1_sf)
 st_crs(curvas_preco1_sf) <- st_crs(31983)
 ggplot() + geom_sf(data = curvas_preco1_sf) +geom_sf_label(data = curvas_preco1_sf, aes(label = level), size = 2) +geom_sf(data=diadema_utm,alpha = 0.2)+ theme_bw()
 
-
-
 # rodando um modelo de interpolacao baseado em Kriging
 LOCfinal_valid_sf_inside_kirg_UTM_s <- LOCfinal_valid_sf_inside_kirg_UTM %>% sample_frac(size = 0.3)
 variogram_model <- variogram(valorsocial_estlg ~ 1, LOCfinal_valid_sf_inside_kirg_UTM_s)
@@ -752,10 +752,10 @@ print(fitted_variogram)
 plot(variogram_model, model = fitted_variogram)
 
 ####a interpolacao por krige esta tomando muito tempo
-# #kriged <- krige(valorsocial_estlg ~ 1, LOCfinal_valid_sf_inside_kirg_UTM_s, , model = fitted_variogram,nmax=5)
-# class(kriged)
-# plot(kriged)
-=======
+kriged <- krige(valorsocial_estlg ~ 1, LOCfinal_valid_sf_inside_kirg_UTM_s,grid_sf, model = fitted_variogram)
+class(kriged)
+plot(kriged)
+
 #Filtro de imóveis com <50m2
 LOCfinal_valid_sf_inside_50 <- LOCfinal_valid_sf_inside[LOCfinal_valid_sf_inside$area_util<50,]
 summary(LOCfinal_valid_sf_inside_50[c("valorm2","dormitorios","suites","vagas","banheiros")])
