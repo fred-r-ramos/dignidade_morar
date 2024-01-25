@@ -1,9 +1,8 @@
 library(tidyverse)
+library(dplyr)
 
-#aqui vou deixar as duas linhas digitadas e uma delas comentario para evitar ficar digitando sempre
-
-setwd( "C:/Users/fredr/Dropbox/B_PROJETOS_PESQUISA_GV/ZAP_DATA_HABITACAO/dignidade_morar")
-#setwd( "G:/My Drive/DOCS/Urbana_habitação/Dignidade_Morar/dignidade_morar")
+#caminho da base de dados
+setwd( "F:/GitHub/dignidade_morar")
 
 BASE<-read.csv("base_dignidade_v1.csv",header = TRUE, stringsAsFactors = FALSE)
 #names(BASE)
@@ -80,7 +79,6 @@ LOC_condominio <- LOCp_valid%>% group_by(condominio_m2<5,condominio_m2>20, na.rm
 #gerando base 5<preço_m2<80 e condomínio<20
 LOCpc_valid<- LOCp_valid %>% filter(condominio_m2<=20 | is.na (condominio_m2))
 
-
 #limpando iptu_m2=na e valores numéricos
 LOCpc_valid$iptu_m2_num<- as.numeric (LOCpc_valid$iptu_m2)
 count(LOCpc_valid)
@@ -103,7 +101,6 @@ LOC_iptu <- LOCpc_valid %>% group_by(iptu_m2<1,iptu_m2>16, na.rm = TRUE)%>%
 
 #gerando base 5<preço_m2<80 e condomínio<20 e iptu<16
 LOCpci_valid<- LOCpc_valid %>% filter(iptu_m2<=16 |is.na (iptu_m2 ))
-
 
 #limpando area_util=na e valores numéricos
 LOCpci_valid$area_util_num<- as.numeric (LOCpci_valid$area_util)
@@ -214,7 +211,7 @@ LOCpciadbv_valid <- LOCpciadbv_valid%>% mutate (limp_3 = dormitorios_num> 4 & ar
 
 LOCfinal_valid <- LOCpciadbv_valid%>% filter (limp_1!="TRUE" & limp_2!="TRUE" &  limp_3!="TRUE")
 count(LOCfinal_valid)
-LOCfinal_valid <-LOCfinal_valid %>% select(-limp_1 & -limp_2 & -limp_3)
+LOCfinal_valid <- dplyr::select(LOCfinal_valid, !limp_1, !limp_2, !limp_3)
 
 #Locacao por tipo e ano
 LOCACAO_anotipo <- LOCfinal_valid %>% group_by(tipo_imovel, Ano) %>% 
@@ -231,10 +228,8 @@ LOCfinal_valid <- LOCfinal_valid %>%
 
 LOCfinal_valid <- LOCfinal_valid%>% mutate (valorm2 = iptu_m2+preco_m2+condominio_m2)
 
-
 #inflacionar valores
 #aqui, se o seu arquivo de excel esta no diretorio de trabalho, nao precisa digitar o caminho todo
-
 library(readxl)
 FipeZap <- read_excel("FipeZap.xlsx")
 #view(FipeZap)
@@ -271,7 +266,7 @@ library(geobr)
 
 diadema <- read_municipality(code_muni = 3513801,year=2010,showProgress = FALSE,simplified = FALSE)
 
-leaflet() %>% addProviderTiles("CartoDB.Positron") %>%  
+leaflet() %>% addProviderTiles("Esri.WorldImagery") %>%  
   addPolygons(data=diadema , color = "red", weight = 2, smoothFactor = 0.5,
               opacity = 1.0, fillOpacity = 0,
               highlightOptions = highlightOptions(color = "white", weight = 2,
@@ -294,9 +289,7 @@ leaflet() %>% addProviderTiles("CartoDB.Positron") %>%
                                                   bringToFront = TRUE)) %>%  addPolygons(data=diadema_buffer , color = "green", weight = 2, smoothFactor = 0.5,
                                                                                          opacity = 1.0, fillOpacity = 0,
                                                                                          highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE)) %>% addCircleMarkers(data=LOCfinal_valid_sample,lat=LOCfinal_valid_sample$latitude,lng=LOCfinal_valid_sample$longitude,color = "blue", radius = 0.01)
-
 #selecionar apenas as amostrar que estao ate 2 km da fronteira de Diadema
-
 LOCfinal_valid_sample_sf <- st_as_sf(LOCfinal_valid_sample, coords = c("longitude", "latitude"))
 
 st_crs(LOCfinal_valid_sample_sf)
@@ -314,6 +307,43 @@ leaflet() %>% addProviderTiles("CartoDB.Positron") %>%
 
 LOCfinal_valid_sample_sf_inside <- st_intersection(LOCfinal_valid_sample_sf, diadema_buffer)
 
+leaflet() %>% addProviderTiles("CartoDB.Positron") %>%  
+  addPolygons(data=diadema , color = "red", weight = 2, smoothFactor = 0.5,
+              opacity = 1.0, fillOpacity = 0,
+              highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                  bringToFront = TRUE)) %>%  addPolygons(data=diadema_buffer , color = "green", weight = 2, smoothFactor = 0.5,
+                                                                                         opacity = 1.0, fillOpacity = 0,
+                                                                                         highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE)) %>%   addCircleMarkers(data = LOCfinal_valid_sample_sf_inside,color = "blue", radius = 0.01)
+
+#Mapa com de valores por m2 sample com legenda de preços quando aponto o cursor
+pal <- colorQuantile(c("lightgreen", "darkblue"), domain = LOCfinal_valid_sample$valorm2_r, n = 5, alpha = 0.5)
+map0 <- leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data = diadema, color = "red", weight = 2, smoothFactor = 0.5,
+              opacity = 1.0, fillOpacity = 0,
+              highlightOptions = highlightOptions(color = "white", weight = 2,bringToFront = FALSE)) %>%
+  addCircleMarkers(data = LOCfinal_valid_sample_sf, label = sprintf("%.2f", LOCfinal_valid_sample_sf$valorm2_r),
+                   color = ~pal(valorm2_r), radius = 2, stroke = FALSE, fillOpacity = 0.8) %>% 
+  addLegend(position = "bottomright", pal = pal, values = LOCfinal_valid_sample_sf$valorm2_r,title = "Valor do aluguel por m2", opacity = 0.8)
+
+map0
+
+#selecionar apenas as amostrar que estão ate 2 km da fronteira de Diadema
+LOCfinal_valid_sample_sf <- st_as_sf(LOCfinal_valid_sample, coords = c("longitude", "latitude"))
+st_crs(LOCfinal_valid_sample_sf)
+LOCfinal_valid_sample_sf <- st_set_crs(LOCfinal_valid_sample_sf, 4674)
+st_crs(LOCfinal_valid_sample_sf)
+st_crs(diadema_buffer)
+
+leaflet() %>% addProviderTiles("CartoDB.Positron") %>%  
+  addPolygons(data=diadema , color = "red", weight = 2, smoothFactor = 0.5,
+              opacity = 1.0, fillOpacity = 0,
+              highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                  bringToFront = TRUE)) %>%  addPolygons(data=diadema_buffer , color = "green", weight = 2, smoothFactor = 0.5,
+                                                                                         opacity = 1.0, fillOpacity = 0,
+                                                                                         highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE)) %>% addCircleMarkers(data=LOCfinal_valid_sample_sf,lat=LOCfinal_valid_sample$latitude,lng=LOCfinal_valid_sample$longitude,color = "blue", radius = 0.01)
+
+LOCfinal_valid_sample_sf_inside <- st_intersection(LOCfinal_valid_sample_sf, diadema_buffer)
 
 leaflet() %>% addProviderTiles("CartoDB.Positron") %>%  
   addPolygons(data=diadema , color = "red", weight = 2, smoothFactor = 0.5,
@@ -322,8 +352,8 @@ leaflet() %>% addProviderTiles("CartoDB.Positron") %>%
                                                   bringToFront = TRUE)) %>%  addPolygons(data=diadema_buffer , color = "green", weight = 2, smoothFactor = 0.5,
                                                                                          opacity = 1.0, fillOpacity = 0,
                                                                                          highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE)) %>%   addCircleMarkers(data = LOCfinal_valid_sample_sf_inside,color = "blue", radius = 0.01)
-#Mapa com de valores por m2 com legenda de preços quando aponto o cursor
-library(leaflet)
+
+#Mapa com de valores por m2 insde buffer com legenda de preços quando aponto o cursor
 pal <- colorQuantile(c("lightgreen", "darkblue"), domain = LOCfinal_valid_sample$valorm2_r, n = 5, alpha = 0.5)
 map1 <- leaflet() %>%
   addProviderTiles("CartoDB.Positron") %>%
@@ -370,47 +400,6 @@ plot(LOCfinal_valid_sf_inside[41])
 summary(LOCfinal_valid_sf_inside[41])
 hist(LOCfinal_valid_sf_inside$precom2_r)
 
-#Estimar valor hedônico para amostras dentro do buffer
-# Converter dist_center em 'numeric'
-LOCfinal_valid_sf_inside$distcenter <- as.numeric(LOCfinal_valid_sf_inside$dist_center)
-LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
-  mutate(apart = case_when(tipo_imovel == "APARTAMENTO" ~ 1, TRUE ~ 0))
-
-names(LOCfinal_valid_sf_inside)
-hedonic_inside <- lm(valorm2 ~ area_util  +apart + dormitorios + suites + andar + vagas + banheiros + latitude +longitude +dist_center, data = LOCfinal_valid_sf_inside)
-
-# Verificar os resultados da regressão
-summary(hedonic_inside)
-
-# Fazer previsões com o modelo
-LOCfinal_valid_sf_inside$predicted_valorm2 <- predict(hedonic_inside, newdata = LOCfinal_valid_sf_inside)
-
-#Descritivas
-summary(LOCfinal_valid_sf_inside[c("predicted_valorm2","valorm2_r","dormitorios","suites","vagas","banheiros")])
-
-# Comparar preços reais com preços previstos
-ggplot(data = LOCfinal_valid_sf_inside, aes(x = valorm2_r, y = predicted_valorm2)) +
-  geom_point() +
-  geom_abline(intercept = -20, slope = 1, color = "red") +
-  labs(title = "Comparação entre Preços Reais e Previstos",
-       x = "Preço Real (valorm2)",
-       y = "Preço Previsto")
-
-#teste de significância do modelo
-resultado_anova <- anova(hedonic_inside)
-print(resultado_anova)
-
-#teste de multicolinearidade (VIF), apresenta alguma multicolinearidade 
-library(usdm)
-library(car)
-vif_result <- vif(hedonic_inside)
-print(vif_result)
-
-#Teste de autocorrelação dos resíduos (Durbin-Watson), com autocorrelação positiva
-library(lmtest)
-teste_durbin_watson <- dwtest(hedonic_inside)
-print(teste_durbin_watson)
-
 #plotando um mapa com os valores outliers de valorm2_r > 100
 LOCfinal_valid_sf_inside_filter <- LOCfinal_valid_sf_inside %>% filter(LOCfinal_valid_sf_inside$valorm2_r>100)
 summary(LOCfinal_valid_sf_inside_filter$valorm2_r)
@@ -425,58 +414,7 @@ map2 <- leaflet() %>%
   addLegend(position = "bottomright", pal = pal, values = LOCfinal_valid_sf_inside_filter$valorm2_r,title = "Valor do aluguel por m2", opacity = 0.8)
 map2
 
-
-# Estimar modelo de aluguel social
-# Criar as características desejadas
-LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>% 
-  mutate(area_s =50,
-         dorm2 = 2,
-         suite0 = 0,
-         vaga1 = 1,
-         banho1 = 1)
-
-# Acessar diretamente os coeficientes estimados do modelo 'hedonic_inside'
-coeficientes <- coef(hedonic_inside)
-
-# Calcular o valor de 'valorsocial_est' com base nos coeficientes e nas características criadas
-LOCfinal_valid_sf_inside$valorsocial_est <- coeficientes[1] +
-  coeficientes[2] * LOCfinal_valid_sf_inside$area_s +
-  coeficientes[3] * LOCfinal_valid_sf_inside$apart +
-  coeficientes[4] * LOCfinal_valid_sf_inside$dorm2 +
-  coeficientes[5] * LOCfinal_valid_sf_inside$suite0 +
-  coeficientes[6] * LOCfinal_valid_sf_inside$andar +
-  coeficientes[7] * LOCfinal_valid_sf_inside$vaga1 +
-  coeficientes[8] * LOCfinal_valid_sf_inside$banho1 +
-  coeficientes[9] * LOCfinal_valid_sf_inside$latitude +
-  coeficientes[10] * LOCfinal_valid_sf_inside$longitude +
-  coeficientes[11] * LOCfinal_valid_sf_inside$dist_center
-
-summary(LOCfinal_valid_sf_inside$valorsocial_est)
-
-#mapa com valores do aluguel social
-pal <- colorNumeric(c("lightgreen", "darkblue"), 
-                    domain = LOCfinal_valid_sf_inside$valorsocial_est, 
-                    na.color = "gray")
-
-map3 <- leaflet() %>%
-  addProviderTiles("CartoDB.Positron") %>%
-  addPolygons(data = diadema, color = "red", weight = 2, smoothFactor = 0.5,
-              opacity = 1.0, fillOpacity = 0,
-              highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = FALSE)) %>%
-  addCircleMarkers(data = LOCfinal_valid_sf_inside, 
-                   label = sprintf("%.2f", LOCfinal_valid_sf_inside$valorsocial_est),
-                   color = ~pal(valorsocial_est), 
-                   radius = 2, 
-                   stroke = FALSE, 
-                   fillOpacity = 0.8) %>% 
-  addLegend(position = "bottomright", 
-            pal = pal, 
-            values = LOCfinal_valid_sf_inside$valorsocial_est,
-            title = "Valor do aluguel social por m2", 
-            opacity = 0.8)
-map3
-
-#MODELO EM LOG
+#MODELO HEDÔNICO EM LOG
 #Estimar valor hedônico para amostras dentro do buffer
 # Converter dist_center em 'numeric'
 LOCfinal_valid_sf_inside$distcenter <- as.numeric(LOCfinal_valid_sf_inside$dist_center)
@@ -515,7 +453,10 @@ LOCfinal_valid_sf_inside$ln_suite <- replace(LOCfinal_valid_sf_inside$ln_suite, 
 hedonic_inside <- lm(ln_valorm2 ~ ln_area +apart + ln_dorm + ln_suite + ln_andar + ln_vaga + ln_banho + latitude +longitude +ln_dist, data = LOCfinal_valid_sf_inside)
 
 # Verificar os resultados da regressão
+library(broom)
 summary(hedonic_inside)
+resultado_hedonic <- tidy(hedonic_inside)
+write.csv(resultado_hedonic, file = "resultados_hedonico.csv", row.names = FALSE)
 
 # Fazer previsões com o modelo
 LOCfinal_valid_sf_inside$predicted_valorm2 <- predict(hedonic_inside, newdata = LOCfinal_valid_sf_inside)
@@ -531,43 +472,12 @@ ggplot(data = LOCfinal_valid_sf_inside, aes(x = ln_valorm2, y = predicted_valorm
        x = "Log Valor Real (valor/m2)",
        y = "Log Valor Previsto")
 
-#Índice de Moran
-library(spdep)
-library(lmtest)
-
-residuos <- residuals(hedonic_inside)
-hist(residuos)
-# Suponha que seus dados tenham informações de latitude e longitude em colunas chamadas "latitude" e "longitude"
-coords <- cbind(LOCfinal_valid_sf_inside$latitude, LOCfinal_valid_sf_inside$longitude)
-# Crie a matriz de vizinhança
-#matriz_pesos <- dnearneigh(coords, d1 = 0, d2 = 400)  # Ajuste a distância conforme necessário
-# Converta a matriz de pesos em um objeto listw
-#matriz_pesos_listw <- nb2listw(matriz_pesos)
-#moran_result <- moran.test(residuos, matriz_pesos_listw)
-#moran_result$statistic
-#moran_result$p.value
-
-library(spdep)
-library(deldir)
-
 #limpar memória
-#rm(list = ls())
 gc()
-
 
 #teste de significância do modelo
 resultado_anova <- anova(hedonic_inside)
 print(resultado_anova)
-
-#teste de multicolinearidade (VIF), apresenta alguma multicolinearidade 
-library(usdm)
-library(car)
-vif_result <- vif(hedonic_inside)
-print(vif_result)
-
-#Teste de autocorrelação dos resíduos (Durbin-Watson), com autocorrelação positiva
-teste_durbin_watson <- dwtest(hedonic_inside)
-print(teste_durbin_watson)
 
 # Estimar modelo de aluguel social em log
 # Criar as características desejadas
@@ -581,7 +491,7 @@ LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>%
 # Acessar diretamente os coeficientes estimados do modelo 'hedonic_inside'
 coeficientes <- coef(hedonic_inside)
 
-# Calcular o valor de 'valorsocial_est' com base nos coeficientes e nas características criadas
+# Calcular o valor de 'valorsocial_estlg' com base nos coeficientes e nas características criadas
 LOCfinal_valid_sf_inside$lnvalorsocial_est <- coeficientes[1] +
   coeficientes[2] * LOCfinal_valid_sf_inside$area_s +
   coeficientes[3] * LOCfinal_valid_sf_inside$apart +
@@ -598,14 +508,13 @@ summary(LOCfinal_valid_sf_inside$lnvalorsocial_est)
 LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>% 
   mutate(valorsocial_estlg = exp(lnvalorsocial_est))
 summary(LOCfinal_valid_sf_inside$valorsocial_estlg)
-summary(LOCfinal_valid_sf_inside[c("valorsocial_est","valorsocial_estlg","predicted_valorm2","ln_valorm2","dormitorios","suites","vagas","banheiros")])
+summary(LOCfinal_valid_sf_inside[c("valorsocial_estlg","predicted_valorm2","ln_valorm2","dormitorios","suites","vagas","banheiros")])
 column_vector <- LOCfinal_valid_sf_inside[["valorsocial_estlg"]]
 quantiles <- quantile(column_vector, probs = c(0,0.25, 0.5, 0.75,1))
 print(quantiles)
 quartile_groups <- cut(column_vector, breaks = quantiles, labels = FALSE)
 quartile_counts <- table(quartile_groups)
 print(quartile_counts)
-
 
 #descritiva somente de Diadema
 diadema_data <- LOCfinal_valid_sf_inside[LOCfinal_valid_sf_inside$shp_municipio == "Diadema", ]
@@ -616,14 +525,12 @@ quartile_groups <- cut(column_vector, breaks = quantiles, labels = FALSE)
 quartile_counts <- table(quartile_groups)
 print(quartile_counts)
 
-
-
 #mapa com valores do aluguel social
 pal <- colorNumeric(c("lightgreen", "darkblue"), 
                     domain = LOCfinal_valid_sf_inside$valorsocial_estlg, 
                     na.color = "gray")
 
-map3a <- leaflet() %>%
+map4 <- leaflet() %>%
   addProviderTiles("CartoDB.Positron") %>%
   addPolygons(data = diadema, color = "red", weight = 2, smoothFactor = 0.5,
               opacity = 1.0, fillOpacity = 0,
@@ -641,15 +548,14 @@ map3a <- leaflet() %>%
             social por m2", 
             opacity = 0.8)
 
-map3a
-
+map4
 
 names(LOCfinal_valid_sf_inside)
 
 ## interpolação para construção das curvas de preço
-library(spData)
 library(sf)
 library(terra)
+library(spData)
 library(tmap)
 library(viridis)
 library(raster)
@@ -669,8 +575,9 @@ valorsocial_XY_UTM <- data.frame(
 names(valorsocial_XY_UTM)
 valorsocial_XY_UTM <- valorsocial_XY_UTM %>% sample_frac(size = 0.3)
 
-
-# rodando um modelo de interpolacao baseado em Local Polynomial Regression Fitting
+#######################################################################################
+# # rodando um modelo de interpolacao baseado em Local Polynomial Regression Fitting# #
+#######################################################################################
 valorsocial_XY_UTM_int <- interp.loess(valorsocial_XY_UTM$Longitude, valorsocial_XY_UTM$Latitude, valorsocial_XY_UTM$valorsocial_estlg, gridlen=c(100,100), span=0.6)
 contour(valorsocial_XY_UTM_int)
 class(valorsocial_XY_UTM_int)
@@ -682,44 +589,54 @@ class(grid_sf)
 plot(grid_sf)
 st_crs(grid_sf) 
 names(grid_sf)
-raster_grid <- rast(ext(grid_sf), resolution =150)
-raster_grid
-# criando uma base espacial tipo raster com os valores interpolados
-valorsocial_raster <- rasterize(grid_sf, raster_grid, field=grid_sf$z, fun = min, na.rm = TRUE)
-valorsocial_raster
-plot(valorsocial_raster)
-crs(valorsocial_raster)<-  "PROJCRS[\"SIRGAS 2000 / UTM zone 23S\",\n    BASEGEOGCRS[\"SIRGAS 2000\",\n        DATUM[\"Sistema de Referencia Geocentrico para las AmericaS 2000\",\n            ELLIPSOID[\"GRS 1980\",6378137,298.257222101,\n                LENGTHUNIT[\"metre\",1]]],\n        PRIMEM[\"Greenwich\",0,\n            ANGLEUNIT[\"degree\",0.0174532925199433]],\n        ID[\"EPSG\",4674]],\n    CONVERSION[\"UTM zone 23S\",\n        METHOD[\"Transverse Mercator\",\n            ID[\"EPSG\",9807]],\n        PARAMETER[\"Latitude of natural origin\",0,\n            ANGLEUNIT[\"degree\",0.0174532925199433],\n            ID[\"EPSG\",8801]],\n        PARAMETER[\"Longitude of natural origin\",-45,\n            ANGLEUNIT[\"degree\",0.0174532925199433],\n            ID[\"EPSG\",8802]],\n        PARAMETER[\"Scale factor at natural origin\",0.9996,\n            SCALEUNIT[\"unity\",1],\n            ID[\"EPSG\",8805]],\n        PARAMETER[\"False easting\",500000,\n            LENGTHUNIT[\"metre\",1],\n            ID[\"EPSG\",8806]],\n        PARAMETER[\"False northing\",10000000,\n            LENGTHUNIT[\"metre\",1],\n            ID[\"EPSG\",8807]]],\n    CS[Cartesian,2],\n        AXIS[\"(E)\",east,\n            ORDER[1],\n            LENGTHUNIT[\"metre\",1]],\n        AXIS[\"(N)\",north,\n            ORDER[2],\n            LENGTHUNIT[\"metre\",1]],\n    USAGE[\n        SCOPE[\"Engineering survey, topographic mapping.\"],\n        AREA[\"Brazil - between 48°W and 42°W, northern and southern hemispheres, onshore and offshore.\"],\n        BBOX[-33.5,-48,5.13,-42]],\n    ID[\"EPSG\",31983]]"
-diadema_utm <- st_transform(diadema,31983)
-#recortar o raster sobreopondo as fornateiras de Diadema
-valorsocial_raster_cropped = crop(valorsocial_raster, diadema_utm)
-plot(valorsocial_raster_cropped)
-valorsocial_raster_masked = mask(valorsocial_raster_cropped, diadema_utm)
-plot(valorsocial_raster_masked)
-#calculando as curvas de preço
-curvas_preco = as.contour(valorsocial_raster_masked) 
-plot(valorsocial_raster_masked, axes = FALSE)
-plot(valorsocial_raster_masked, add = TRUE)
-plot(curvas_preco,add=TRUE)
-class(curvas_preco)
-plot(curvas_preco,add=TRUE)
-#transformando as curvas em vetor simplefeature
-curvas_preco_sf <- sf::st_as_sf(curvas_preco)
-ggplot() + geom_sf(data = curvas_preco_sf) +geom_sf_label(data = curvas_preco_sf, aes(label = level), size = 2) +geom_sf(data=diadema_utm,alpha = 0.2)+ theme_bw()
+library(stars)
+crs(diadema)
+diadema_utm <- st_transform(diadema, crs = 31983)
+grid_diadema <- st_intersection(grid_sf, diadema_utm)
+plot(grid_diadema)
+# # criando uma base espacial tipo raster com os valores interpolados
+grid_diadema_raster<-st_rasterize(grid_diadema %>% dplyr::select(z, geometry))
+plot(grid_diadema_raster)
+names(diadema_utm)
+diadema_utm <- diadema_utm[, !(names(diadema_utm) %in% c("name_muni", "code_state", "abbrev_state"))]
+# # recortando o raster usando o limite de municipio de Diadema
+grid_diadema_raster_crop<-st_crop(grid_diadema_raster ,diadema_utm,crop = TRUE)
+plot(grid_diadema_raster_crop,reset = FALSE)
+contour(grid_diadema_raster_crop,add=TRUE)
+# # criando as curvas de nivel de preços
+countours <-  st_contour(grid_diadema_raster_crop, contour_lines = TRUE)
+plot(countours)
+class(countours)
+ggplot(buffer_interno) +
+  geom_sf() +
+  geom_sf(data = countours)
+# # criando um buffer interno em relaçao a divisa de Diadema de modo a garantir que as
+# # curvas de nível efetivamente cruzem a fornteira para garantir a subdivisao do municipio 
+# # em zonas de preços (aqui usando uma distancia de 100 metros)
+buffer_interno <- st_buffer(diadema_utm, -100) 
+# # subdividindo o municpio em zonas de preços
+zonas_preços <- lwgeom::st_split(buffer_interno,countours) %>%
+  st_collection_extract("POLYGON")
+zonas_preços_degree <- st_transform(zonas_preços, crs = 4674)
+map4a <- leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data = zonas_preços_degree, color = "red", weight = 2, smoothFactor = 0.5,
+              opacity = 1.0, fillOpacity = 0,
+              highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = FALSE))
+map4a
 
 
-
-# rodando um modelo de interpolacao baseado em Inverse Distance Weighting (IDW) Interpolation
+#################################################################################################
+# #rodando um modelo de interpolacao baseado em Inverse Distance Weighting (IDW) Interpolation# #
+#################################################################################################
 tmap_mode("plot")
 map <- st_union(diadema_buffer) %>% st_sf()
 tm_shape(map) + tm_polygons(alpha = 0.3) + tm_shape(LOCfinal_valid_sf_inside_kirg) +
   tm_dots("valorsocial_estlg", palette = "viridis")
-
 ###rodando a interpolacao
 res <- gstat(formula = valorsocial_estlg ~ 1, locations = LOCfinal_valid_sf_inside_kirg_UTM,
              nmax = nrow(LOCfinal_valid_sf_inside_kirg_UTM), # use all the neighbors locations
              set = list(idp = 1)) # beta = 1 
-
-
 resp <- predict(res, grid_sf)
 resp$x <- st_coordinates(resp)[,1]
 resp$y <- st_coordinates(resp)[,2]
@@ -727,44 +644,143 @@ resp$pred <- resp$var1.pred
 ggplot() + geom_sf(data = resp, aes(color = pred)) +
   scale_color_viridis(name = "pred") + theme_bw()
 class(resp)
-valorsocial_raster1 <- rasterize(resp, raster_grid, field=resp$pred, fun = min, na.rm = TRUE)
-resp_raster_cropped <- crop(valorsocial_raster1, diadema_utm)
-resp_raster_masked = mask(resp_raster_cropped, diadema_utm)
-plot(resp_raster_masked)
-#calculando as curvas de preço
-curvas_preco1 = as.contour(resp_raster_masked) 
-plot(resp_raster_masked, axes = FALSE)
-plot(resp_raster_masked, add = TRUE)
-plot(curvas_preco1,add=TRUE)
-class(curvas_preco1)
-#transformando as curvas em vetor simplefeature
-curvas_preco1_sf <- sf::st_as_sf(curvas_preco1)
-class(curvas_preco1_sf)
-st_crs(curvas_preco1_sf) <- st_crs(31983)
-ggplot() + geom_sf(data = curvas_preco1_sf) +geom_sf_label(data = curvas_preco1_sf, aes(label = level), size = 2) +geom_sf(data=diadema_utm,alpha = 0.2)+ theme_bw()
+grid_diadema1 <- st_intersection(resp, diadema_utm)
+plot(grid_diadema1)
+
+# # criando uma base espacial tipo raster com os valores interpolados
+grid_diadema_raster1<-st_rasterize(grid_diadema1 %>% dplyr::select(var1.pred, geometry))
+plot(grid_diadema_raster1)
+# # recortando o raster usando o limite de municipio de Diadema
+grid_diadema_raster1_crop<-st_crop(grid_diadema_raster1 ,diadema_utm,crop = TRUE)
+plot(grid_diadema_raster1_crop,reset = FALSE)
+contour(grid_diadema_raster1_crop,add=TRUE)
+# # criando as curvas de nivel de preços
+countours1 <-  st_contour(grid_diadema_raster1_crop, contour_lines = TRUE)
+plot(countours1)
+class(countours1)
+ggplot(buffer_interno) +
+  geom_sf() +
+  geom_sf(data = countours1)
+# # subdividindo o municpio em zonas de preços
+zonas_preços1 <- lwgeom::st_split(buffer_interno,countours1) %>%
+  st_collection_extract("POLYGON")
+
+zonas_preços1_degree <- st_transform(zonas_preços1, crs = 4674)
+map4b <- leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data = zonas_preços1_degree, color = "red", weight = 2, smoothFactor = 0.5,
+              opacity = 1.0, fillOpacity = 0,
+              highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront =FALSE))
+
+map4b
 
 # rodando um modelo de interpolacao baseado em Kriging
+LOCfinal_valid_sf_inside_kirg_UTM_s <- LOCfinal_valid_sf_inside_kirg_UTM %>% sample_frac(size = 0.05)
+# Defina o tamanho da célula, que depende da resolução desejada
+cell_size <- 150  # Ajuste conforme necessário
+# Crie a grade com a geometria correta (polygon)
+grid_sf_krig <- st_make_grid(LOCfinal_valid_sf_inside_kirg_UTM_s, cellsize = c(cell_size, cell_size))
+st_crs(grid_sf_krig) <- st_crs(LOCfinal_valid_sf_inside_kirg_UTM_s)
+# Converta a grade em um objeto com geometria sfc
+grid_sf_krig <- grid_sf_krig %>%
+  st_as_sf()
+# Verifique se as células têm pontos e calcule a média dos valores
+grid_with_means <- grid_sf_krig %>%
+  st_join(LOCfinal_valid_sf_inside_kirg_UTM_s) %>%
+  group_by(geometry) %>%
+  summarise(valorsocial_estlg_mean = mean(valorsocial_estlg, na.rm = TRUE))
+# Remova células sem valores válidos
+grid_with_means <- grid_with_means[!is.na(grid_with_means$valorsocial_estlg_mean),]
+
+# Crie um objeto variogram 
 LOCfinal_valid_sf_inside_kirg_UTM_s <- LOCfinal_valid_sf_inside_kirg_UTM %>% sample_frac(size = 0.3)
 variogram_model <- variogram(valorsocial_estlg ~ 1, LOCfinal_valid_sf_inside_kirg_UTM_s)
 plot(variogram_model)
-fitted_variogram <- fit.variogram(variogram_model, vgm("Exc"))
-print(fitted_variogram)
+#fitted_variogram <- fit.variogram(variogram_model, vgm("Exc"))
+fitted_variogram <- fit.variogram(object = variogram_model,
+                                  model = vgm(psill = 22, model = "Sph",
+                                              range = 1000,kappa=0.5, nugget = 1))
 plot(variogram_model, model = fitted_variogram)
+fitted_variogram
 
-####a interpolacao por krige esta tomando muito tempo
-kriged <- krige(valorsocial_estlg ~ 1, LOCfinal_valid_sf_inside_kirg_UTM_s,grid_sf, model = fitted_variogram)
-class(kriged)
-plot(kriged)
+k <- gstat(formula = grid_with_means$valorsocial_estlg_mean ~ 1, data = grid_with_means, model = fitted_variogram)
+kpred <- predict(k, grid_sf_krig)
+
+ggplot() + geom_sf(data = kpred, aes(color = var1.pred)) +
+  geom_sf(data = grid_with_means) +
+  scale_color_viridis(name = "valorsocial_estlg_mean") + theme_bw()
+
+raster_grid <- rast(ext(grid_sf), resolution =100)
+raster_grid
+valorkrig_raster <- rasterize(kpred, raster_grid, field="var1.pred", fun = "mean", na.rm = TRUE)
+valorkrig_raster
+resp_raster_cropped_k <- crop(valorkrig_raster, diadema_utm)
+resp_raster_masked_k = mask(resp_raster_cropped_k, diadema_utm)
+plot(resp_raster_masked_k)
+#calculando as curvas de preço krig
+curvas_preco_k = as.contour(resp_raster_masked_k) 
+plot(resp_raster_masked_k, axes = FALSE)
+plot(resp_raster_masked_k, add = TRUE)
+plot(curvas_preco_k,add=TRUE)
+class(curvas_preco_k)
+#transformando as curvas em vetor simplefeature
+curvas_preco_k_sf <- sf::st_as_sf(curvas_preco_k)
+plot(curvas_preco_k_sf)
+class(curvas_preco_k_sf)
+st_crs(curvas_preco_k_sf) <- st_crs(31983)
+curva_preco<- ggplot() + geom_sf(data = curvas_preco_k_sf,aes(color=level),lwd=1)+scale_colour_gradient(low = "cyan", high = "darkred") +
+  geom_sf_label(data = curvas_preco_k_sf, aes(label = level), size = 2) +
+  geom_sf(data=diadema_utm,alpha = 0.2)+ theme_bw()
+curva_preco
+
+# # subdividindo o municpio em zonas de preços
+zonas_preços2 <- lwgeom::st_split(buffer_interno,curvas_preco_k_sf) %>%
+  st_collection_extract("POLYGON")
+
+plot (zonas_preços2)
+class (zonas_preços2)
+distritos_diadema <- read_sf("zonas_OP_Diadema.gpkg")
+distrito_diadema_degree <- st_transform(distritos_diadema, crs = 4674)
+crs(distrito_diadema_degree)
+
+zonas_preços2_degree <- st_transform(zonas_preços2, crs = 4674)
+
+curva_preco2 <- leaflet() %>%
+  addPolygons(data = distrito_diadema_degree,fillOpacity = 0)%>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data = zonas_preços2_degree,  color= 'red',weight = 2, smoothFactor = 0.5,
+              opacity = 1.0, fillOpacity = 0,
+              highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront =FALSE))
+curva_preco2
+
+curva_preco3 <- leaflet() %>%
+  addPolygons(data = distrito_diadema_degree,fillOpacity = 0)%>%
+  addProviderTiles("Esri.WorldImagery") %>%
+  addPolygons(data = zonas_preços2_degree,  color= 'yellow',weight = 2, smoothFactor = 0.5,
+              opacity = 1.0, fillOpacity = 0,
+              highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront =FALSE))
+curva_preco3
+
+curva_preco4<- ggplot() + 
+  geom_sf(data=diadema_utm,alpha = 0.2)+ theme_bw()+
+  geom_sf(data = curvas_preco_k_sf,aes(color=level),lwd=1)+scale_colour_gradient(low = "cyan", high = "darkblue") +
+  geom_sf_label(data = curvas_preco_k_sf, aes(label = level), size = 2) +
+  geom_sf(data=distritos_diadema,color= 'red', lwd=1,alpha=0.2)
+curva_preco4
+
+
+
+
 
 #Filtro de imóveis com <50m2
 LOCfinal_valid_sf_inside_50 <- LOCfinal_valid_sf_inside[LOCfinal_valid_sf_inside$area_util<50,]
 summary(LOCfinal_valid_sf_inside_50[c("valorm2","dormitorios","suites","vagas","banheiros")])
-#mapa
+
 pal <- colorNumeric(c("lightgreen", "darkblue"), 
                     domain = LOCfinal_valid_sf_inside_50$valorm2, 
                     na.color = "gray")
 
-map4 <- leaflet() %>%
+map5 <- leaflet() %>%
   addProviderTiles("CartoDB.Positron") %>%
   addPolygons(data = diadema, color = "red", weight = 2, smoothFactor = 0.5,
               opacity = 1.0, fillOpacity = 0,
@@ -782,54 +798,10 @@ map4 <- leaflet() %>%
             social por m2", 
             opacity = 0.8)
 
-map4
+map5
 
 
 
->>>>>>> f1b70d9151ef9533437371c1aca67fa186d2a7d7
-
-
-
-
-
-# Gere n valores aleatórios entre 42 e 50
-#area_s <- runif(n, min = 40, max = 50)
-#dorm_s <- sample(0:2, n,replace = TRUE)
-#vaga_s <- sample(0:1, n,replace = TRUE)
-
-# Adicione os valores gerados como uma nova coluna na base de dados
-#LOCfinal_valid_sf_inside$area_s <- log(area_s)
-#LOCfinal_valid_sf_inside$dorm_s <- log(dorm_s)
-#LOCfinal_valid_sf_inside$vaga_s <- log(vaga_s)
-
-#any(is.infinite(LOCfinal_valid_sf_inside$area_s))
-#any(is.infinite(LOCfinal_valid_sf_inside$dorm_s))
-#any(is.infinite(LOCfinal_valid_sf_inside$vaga_s))
-
-#LOCfinal_valid_sf_inside$dorm_s <- replace(LOCfinal_valid_sf_inside$dorm_s, is.infinite(LOCfinal_valid_sf_inside$dorm_s), 0)
-#LOCfinal_valid_sf_inside$vaga_s <- replace(LOCfinal_valid_sf_inside$vaga_s, is.infinite(LOCfinal_valid_sf_inside$vaga_s), 0)
-
-# Acessar diretamente os coeficientes estimados do modelo 'hedonic_inside'
-#coeficientes <- coef(hedonic_inside)
-
-# Calcular o valor de 'valorsocial_est' com base nos coeficientes e nas características criadas
-#LOCfinal_valid_sf_inside$lnvalorsocial_est <- coeficientes[1] +
-#  coeficientes[2] * LOCfinal_valid_sf_inside$area_s +
-#  coeficientes[3] * LOCfinal_valid_sf_inside$apart +
-#  coeficientes[4] * LOCfinal_valid_sf_inside$dorm_s +
-#  coeficientes[5] * LOCfinal_valid_sf_inside$suite0 +
-#  coeficientes[6] * LOCfinal_valid_sf_inside$ln_andar+
-#  coeficientes[7] * LOCfinal_valid_sf_inside$vaga_s +
-#  coeficientes[8] * LOCfinal_valid_sf_inside$banho1 +
-#  coeficientes[9] * LOCfinal_valid_sf_inside$latitude +
-#  coeficientes[10] * LOCfinal_valid_sf_inside$longitude +
-#  coeficientes[11] * LOCfinal_valid_sf_inside$ln_dist
-
-#summary(LOCfinal_valid_sf_inside$lnvalorsocial_est)
-#LOCfinal_valid_sf_inside <- LOCfinal_valid_sf_inside %>% 
-#  mutate(valorsocial_estlg = exp(lnvalorsocial_est))
-#summary(LOCfinal_valid_sf_inside$valorsocial_estlg)
-#summary(LOCfinal_valid_sf_inside[c("valorsocial_est","valorsocial_estlg","predicted_valorm2","ln_valorm2","dormitorios","suites","vagas","banheiros")])
 
 
 
